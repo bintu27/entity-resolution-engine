@@ -41,7 +41,16 @@ def match_matches(
                 continue
             home_team_match = alpha_team_map.get(alpha_row["home_team_id"])
             away_team_match = alpha_team_map.get(alpha_row["away_team_id"])
-            team_score = 1.0 if home_team_match and away_team_match else 0.0
+
+            if (
+                home_team_match is None
+                or away_team_match is None
+                or home_team_match != beta_row["home_team_id"]
+                or away_team_match != beta_row["away_team_id"]
+            ):
+                continue
+
+            team_score = 1.0
             date_score = _date_similarity(alpha_row.get("match_date"), beta_row.get("match_date"))
             confidence = 0.4 * team_score + 0.3 * date_score + 0.3
             if confidence > best_score:
