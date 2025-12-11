@@ -1,6 +1,9 @@
-include .env
+-include .env
 
-.PHONY: up seed map api clean
+.PHONY: up seed map api clean bootstrap dev .env
+
+.env:
+	@if [ ! -f .env ]; then cp .env.example .env; fi
 
 up:
 	docker-compose up -d
@@ -17,3 +20,11 @@ api:
 
 clean:
 	docker-compose down -v
+
+bootstrap: .env
+	$(MAKE) up
+	$(MAKE) seed
+	$(MAKE) map
+
+dev: bootstrap
+	$(MAKE) api

@@ -30,6 +30,13 @@ A modular Python-based Entity Resolution Engine that merges records from two ind
    make api
    ```
 
+### One-command local run
+If you just want everything brought up in one shot, run:
+```bash
+make dev
+```
+This target ensures `.env` exists (copying from `.env.example` if needed), starts the databases, seeds them, runs the mapper, and finally launches the FastAPI server. Use `Ctrl+C` to stop the API and `make clean` to tear everything down.
+
 ## Docker Compose
 `docker-compose.yml` spins up three Postgres 16 services:
 - `source_alpha_db` on port 5433
