@@ -41,7 +41,8 @@ def match_seasons(
                         "confidence": confidence,
                         "start_year": alpha_start or beta_start,
                         "end_year": alpha_end or beta_end,
-                        "competition_id": comp_match,
+                        "alpha_competition_id": alpha_row["competition_id"],
+                        "beta_competition_id": beta_row["competition_id"],
                     }
                 )
     return results
@@ -67,7 +68,9 @@ def build_season_entities(
             "ues_season_id": ues_id,
             "start_year": match.get("start_year"),
             "end_year": match.get("end_year"),
-            "competition_ues_id": competition_ues_map.get(match["competition_id"]),
+            "competition_ues_id": competition_ues_map.get(
+                match.get("alpha_competition_id")
+            ),
             "merge_confidence": match["confidence"],
             "lineage": lineage,
         }

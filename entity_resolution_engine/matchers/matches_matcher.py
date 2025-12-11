@@ -42,12 +42,15 @@ def match_matches(
             home_team_match = alpha_team_map.get(alpha_row["home_team_id"])
             away_team_match = alpha_team_map.get(alpha_row["away_team_id"])
 
-            if (
-                home_team_match is None
-                or away_team_match is None
-                or home_team_match != beta_row["home_team_id"]
-                or away_team_match != beta_row["away_team_id"]
-            ):
+            if home_team_match is None or away_team_match is None:
+                continue
+
+            teams_align = (
+                home_team_match == beta_row["home_team_id"]
+                and away_team_match == beta_row["away_team_id"]
+            )
+
+            if not teams_align:
                 continue
 
             team_score = 1.0
