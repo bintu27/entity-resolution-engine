@@ -6,6 +6,9 @@ from rapidfuzz import fuzz
 
 
 PUNCT_PATTERN = re.compile(r"[^\w\s]")
+ALIAS_PATTERNS = [
+    (re.compile(r"\bfc\b"), "football club"),
+]
 
 
 def normalize_name(name: Optional[str]) -> str:
@@ -15,6 +18,10 @@ def normalize_name(name: Optional[str]) -> str:
     text = "".join(c for c in text if not unicodedata.combining(c))
     text = text.lower().strip()
     text = PUNCT_PATTERN.sub(" ", text)
+    text = re.sub(r"\s+", " ", text)
+    for pattern, replacement in ALIAS_PATTERNS:
+        if pattern.search(text):
+            text = pattern.sub(replacement, text)
     text = re.sub(r"\s+", " ", text)
     return text
 

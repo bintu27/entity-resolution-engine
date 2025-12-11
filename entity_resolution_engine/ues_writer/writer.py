@@ -2,6 +2,8 @@ import hashlib
 from typing import Dict, List
 
 import pandas as pd
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from entity_resolution_engine.db.connections import get_engine, init_db
 
@@ -21,12 +23,12 @@ class UESWriter:
 
     def reset(self) -> None:
         with self.engine.begin() as conn:
-            conn.execute("DELETE FROM source_lineage")
-            conn.execute("DELETE FROM ues_matches")
-            conn.execute("DELETE FROM ues_players")
-            conn.execute("DELETE FROM ues_seasons")
-            conn.execute("DELETE FROM ues_competitions")
-            conn.execute("DELETE FROM ues_teams")
+            conn.execute(text("DELETE FROM source_lineage"))
+            conn.execute(text("DELETE FROM ues_matches"))
+            conn.execute(text("DELETE FROM ues_players"))
+            conn.execute(text("DELETE FROM ues_seasons"))
+            conn.execute(text("DELETE FROM ues_competitions"))
+            conn.execute(text("DELETE FROM ues_teams"))
 
     def _write_source_lineage(self, entries: List[Dict]) -> None:
         if not entries:
@@ -38,7 +40,13 @@ class UESWriter:
         if not teams:
             return
         df = pd.DataFrame(teams)
-        df.to_sql("ues_teams", self.engine, if_exists="append", index=False)
+        df.to_sql(
+            "ues_teams",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"lineage": JSONB},
+        )
         lineage_entries = []
         for team in teams:
             for src in team["lineage"]["sources"]:
@@ -56,7 +64,13 @@ class UESWriter:
         if not competitions:
             return
         df = pd.DataFrame(competitions)
-        df.to_sql("ues_competitions", self.engine, if_exists="append", index=False)
+        df.to_sql(
+            "ues_competitions",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"lineage": JSONB},
+        )
         lineage_entries = []
         for comp in competitions:
             for src in comp["lineage"]["sources"]:
@@ -74,7 +88,13 @@ class UESWriter:
         if not seasons:
             return
         df = pd.DataFrame(seasons)
-        df.to_sql("ues_seasons", self.engine, if_exists="append", index=False)
+        df.to_sql(
+            "ues_seasons",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"lineage": JSONB},
+        )
         lineage_entries = []
         for season in seasons:
             for src in season["lineage"]["sources"]:
@@ -92,7 +112,13 @@ class UESWriter:
         if not players:
             return
         df = pd.DataFrame(players)
-        df.to_sql("ues_players", self.engine, if_exists="append", index=False)
+        df.to_sql(
+            "ues_players",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"lineage": JSONB},
+        )
         lineage_entries = []
         for player in players:
             for src in player["lineage"]["sources"]:
@@ -110,7 +136,13 @@ class UESWriter:
         if not matches:
             return
         df = pd.DataFrame(matches)
-        df.to_sql("ues_matches", self.engine, if_exists="append", index=False)
+        df.to_sql(
+            "ues_matches",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"lineage": JSONB},
+        )
         lineage_entries = []
         for match in matches:
             for src in match["lineage"]["sources"]:
