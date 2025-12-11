@@ -1,0 +1,36 @@
+version: '3.9'
+services:
+  source_alpha_db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: postgres
+      POSTGRES_DB: source_alpha_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - alpha_data:/var/lib/postgresql/data
+  source_beta_db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: postgres
+      POSTGRES_DB: source_beta_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - beta_data:/var/lib/postgresql/data
+  ues_db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: postgres
+      POSTGRES_DB: ues_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - ues_data:/var/lib/postgresql/data
+volumes:
+  alpha_data:
+  beta_data:
+  ues_data:
