@@ -64,13 +64,15 @@ def build_season_entities(
             confidence=match["confidence"],
             breakdown={"start_year": match.get("start_year"), "end_year": match.get("end_year")},
         )
+        competition_ues_id = competition_ues_map.get(match.get("alpha_competition_id"))
+        if competition_ues_id is None:
+            competition_ues_id = competition_ues_map.get(match.get("beta_competition_id"))
+
         record = {
             "ues_season_id": ues_id,
             "start_year": match.get("start_year"),
             "end_year": match.get("end_year"),
-            "competition_ues_id": competition_ues_map.get(
-                match.get("alpha_competition_id")
-            ),
+            "competition_ues_id": competition_ues_id,
             "merge_confidence": match["confidence"],
             "lineage": lineage,
         }
