@@ -50,13 +50,13 @@ This target ensures `.env` exists (copying from `.env.example` if needed), start
 - UES IDs are deterministic (`UES*` + hash) and lineage tracks all source IDs.
 
 ## API Examples
-After running `make api` (default `http://localhost:8080`):
-- Health: `curl http://localhost:8080/health`
-- Trigger mapping: `curl -X POST http://localhost:8080/mapping/run`
-- Get player by UES ID: `curl http://localhost:8080/ues/player/UESP-<hash>`
-- Lookup by SourceAlpha ID: `curl http://localhost:8080/lookup/player/by-alpha/1`
-- Lookup by SourceBeta ID: `curl http://localhost:8080/lookup/player/by-beta/10`
-- Fetch lineage: `curl http://localhost:8080/ues/player/UESP-<hash>/lineage`
+After running `make api` (default `http://localhost:8000` unless you override `FASTAPI_PORT` in `.env`):
+- Health: `curl http://localhost:8000/health`
+- Trigger mapping: `curl -X POST http://localhost:8000/mapping/run`
+- Get player by UES ID: `curl http://localhost:8000/ues/player/UESP-<hash>`
+- Lookup by SourceAlpha ID: `curl http://localhost:8000/lookup/player/by-alpha/1`
+- Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
+- Fetch lineage: `curl http://localhost:8000/ues/player/UESP-<hash>/lineage`
 
 ## Tests
 Basic unit tests cover season normalization, name similarity, deterministic UES IDs, and a positive player match scenario:
