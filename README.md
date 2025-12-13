@@ -143,6 +143,7 @@ After running `make api` (default `http://localhost:8000` unless you override `F
 - Lookup by SourceAlpha ID: `curl http://localhost:8000/lookup/player/by-alpha/1`
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
 - Fetch lineage: `curl http://localhost:8000/ues/player/UESP-<hash>/lineage`
+- Dashboard (HTML): open `http://localhost:8000/` for a landing page that lists every API endpoint and lets you browse tables/rows across SourceAlpha, SourceBeta, and the unified store. The dashboard powers `/db/{alpha|beta|ues}/tables` and `/db/{alpha|beta|ues}/table/<name>?limit=10` under the hood, which you can also call directly if you want JSON.
 
 ## Tests
 Basic unit tests cover season normalization, name similarity, deterministic UES IDs, and a positive player match scenario:
