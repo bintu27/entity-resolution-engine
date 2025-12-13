@@ -1,0 +1,21 @@
+countries:
+  brazil: Brazil
+  brasil: Brazil
+  br: Brazil
+  bra: Brazil
+  england: England
+  en: England
+  usa: USA
+  united states: USA
+  germany: Germany
+footedness:
+  left: left
+  left-footed: left
+  l: left
+  right: right
+  right-footed: right
+  r: right
+competition_sponsors:
+  - presented by
+  - powered by
+  - sponsored by

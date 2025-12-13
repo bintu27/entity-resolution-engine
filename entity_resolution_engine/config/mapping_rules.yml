@@ -1,0 +1,7 @@
+player_confidence_weights:
+  name: 0.6
+  dob: 0.3
+  team: 0.1
+team_name_aliases:
+  man city: manchester city
+  city fc: city football club
