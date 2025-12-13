@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pandas as pd
 import yaml
@@ -21,12 +21,24 @@ def _date_similarity(alpha_date, beta_date) -> float:
     return 0.0
 
 
+def _resolve_beta_team_id(beta_row: pd.Series, field: str, beta_team_lookup: Dict[str, int]) -> Optional[int]:
+    column = f"{field}_team_id"
+    if column in beta_row and not pd.isna(beta_row[column]):
+        return beta_row[column]
+    name_field = f"{field}_team"
+    name = beta_row.get(name_field)
+    if isinstance(name, str):
+        return beta_team_lookup.get(name) or beta_team_lookup.get(name.lower())
+    return None
+
+
 def match_matches(
     alpha_matches: pd.DataFrame,
     beta_matches: pd.DataFrame,
     alpha_team_map: Dict[int, int],
     competition_map: Dict[int, int],
     season_map: Dict[int, int],
+    beta_team_lookup: Dict[str, int],
 ) -> List[Dict]:
     matches: List[Dict] = []
     for _, alpha_row in alpha_matches.iterrows():
@@ -45,9 +57,14 @@ def match_matches(
             if home_team_match is None or away_team_match is None:
                 continue
 
+            beta_home_id = _resolve_beta_team_id(beta_row, "home", beta_team_lookup)
+            beta_away_id = _resolve_beta_team_id(beta_row, "away", beta_team_lookup)
+            if beta_home_id is None or beta_away_id is None:
+                continue
+
             teams_align = (
-                home_team_match == beta_row["home_team_id"]
-                and away_team_match == beta_row["away_team_id"]
+                home_team_match == beta_home_id
+                and away_team_match == beta_away_id
             )
 
             if not teams_align:

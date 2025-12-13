@@ -51,12 +51,18 @@ def main():
 
     competition_map_raw = {m["alpha_competition_id"]: m["beta_competition_id"] for m in comp_matches}
     season_map_raw = {m["alpha_season_id"]: m["beta_season_id"] for m in season_matches}
+    beta_team_lookup = {}
+    for _, row in beta_data["teams"].iterrows():
+        name = row["display_name"]
+        beta_team_lookup[name] = row["id"]
+        beta_team_lookup[name.lower()] = row["id"]
     match_matches_result = match_matches(
         alpha_data["matches"],
         beta_data["matches"],
         alpha_team_to_beta,
         competition_map_raw,
         season_map_raw,
+        beta_team_lookup,
     )
     match_entities = merge_matches(
         match_matches_result,
