@@ -37,6 +37,92 @@ make dev
 ```
 This target ensures `.env` exists (copying from `.env.example` if needed), starts the databases, seeds them, runs the mapper, and finally launches the FastAPI server. Use `Ctrl+C` to stop the API and `make clean` to tear everything down.
 
+## Run Locally (step-by-step)
+### Prerequisites
+- Docker with Compose v2+ (ships with recent Docker Desktop installs)
+- Python 3.11+ plus `pip`
+- `make` (preinstalled on macOS/Linux; install via Xcode CLT, build-essentials, etc.)
+
+### Detailed workflow
+1. **Create a virtual environment (optional but recommended)**  
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+2. **Install Python dependencies**  
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+3. **Prepare environment variables**  
+   ```bash
+   cp .env.example .env  # safe to rerun; overwrites nothing if .env already exists
+   ```
+   Update `.env` if you need to override default ports or API host values.
+4. **Start the three Postgres services**  
+   ```bash
+   make up
+   ```
+   This launches the SourceAlpha, SourceBeta, and UnifiedEntityStore databases on ports 5433–5435. View logs anytime with `docker-compose logs -f`.
+5. **Seed the source databases with synthetic data**  
+   ```bash
+   make seed
+   ```
+6. **Run the entity-resolution pipeline**  
+   ```bash
+   make map
+   ```
+   The mapper reads both sources, performs normalization/matching, and writes to UES.
+7. **Bring up the FastAPI service**  
+   ```bash
+   make api
+   ```
+   The server listens on `http://localhost:8000` by default (`FASTAPI_HOST/FASTAPI_PORT` come from `.env`). Keep this terminal open; hit `Ctrl+C` to stop.
+8. **Exercise the API** (in a different terminal)
+   ```bash
+   curl http://localhost:8000/health
+   curl -X POST http://localhost:8000/mapping/run
+   curl http://localhost:8000/lookup/player/by-alpha/1
+   ```
+9. **Tear down when finished**
+   ```bash
+   make clean
+   ```
+   This stops and removes the Postgres containers/volumes; rerun the steps above to start fresh.
+
+## Inspecting data volumes
+Once the containers are running, you can count rows directly in each database via `psql` inside the respective container.
+
+1. **SourceAlpha tables**
+   ```bash
+   docker-compose exec source_alpha_db psql -U postgres -d source_alpha_db \
+     -c "SELECT COUNT(*) AS players FROM players;"
+   docker-compose exec source_alpha_db psql -U postgres -d source_alpha_db \
+     -c "SELECT COUNT(*) AS matches FROM matches;"
+   ```
+2. **SourceBeta tables**
+   ```bash
+   docker-compose exec source_beta_db psql -U postgres -d source_beta_db \
+     -c "SELECT COUNT(*) AS players FROM players;"
+   docker-compose exec source_beta_db psql -U postgres -d source_beta_db \
+     -c "SELECT COUNT(*) AS matches FROM matches;"
+   ```
+3. **Unified (master) tables**
+   ```bash
+   docker-compose exec ues_db psql -U postgres -d ues_db \
+     -c "SELECT COUNT(*) AS unified_players FROM ues_players;"
+   docker-compose exec ues_db psql -U postgres -d ues_db \
+     -c "SELECT COUNT(*) AS unified_lineage FROM source_lineage;"
+   ```
+
+Swap in any other table name from the schemas (`entity_resolution_engine/db/*.sql`) if you need different counts. You can also open an interactive session (`docker-compose exec <service> psql -U postgres -d <db>`) and run `\dt` to list every table.
+
+## Synthetic data volume
+- `make seed` now loads thousands of rows so you can stress-test the matcher/merger (≈40 Alpha teams, 50 Beta teams, 2k–2.3k players, 800–900 matches, ~20k lineup rows).
+- Data builders share vocab in `entity_resolution_engine/synthetic/base_entities.py` so Alpha/Beta overlap is partial—names are mutated, some entities exist in only one source, and schema quirks stay intact.
+- Adjust the dataset size by tweaking the constants at the top of `entity_resolution_engine/synthetic/generate_alpha_data.py` and `entity_resolution_engine/synthetic/generate_beta_data.py` (team counts, player counts, matches, etc.). Rerun `make seed` (and `make map`) after any change.
+- Each generator deletes the target tables before reloading, so multiple runs keep the database consistent.
+
 ## Docker Compose
 `docker-compose.yml` spins up three Postgres 16 services:
 - `source_alpha_db` on port 5433
