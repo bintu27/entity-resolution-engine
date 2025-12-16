@@ -233,7 +233,20 @@ def dashboard():
                             html += '<table><thead><tr>' + columns.map(col => `<th>${{col}}</th>`).join('') + '</tr></thead>';
                             html += '<tbody>';
                             rows.forEach(row => {{
-                                html += '<tr>' + columns.map(col => `<td>${{row[col] ?? ''}}</td>`).join('') + '</tr>';
+                                const cells = columns.map(col => {{
+                                    let value = row[col];
+                                    if (value === null || value === undefined) {{
+                                        value = '';
+                                    }} else if (typeof value === 'object') {{
+                                        try {{
+                                            value = JSON.stringify(value);
+                                        }} catch (err) {{
+                                            value = '[object]';
+                                        }}
+                                    }}
+                                    return `<td>${{value}}</td>`;
+                                }}).join('');
+                                html += `<tr>${{cells}}</tr>`;
                             }});
                             html += '</tbody></table>';
                         }}
