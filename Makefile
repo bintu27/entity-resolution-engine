@@ -1,6 +1,6 @@
 -include .env
 
-.PHONY: up seed map api clean bootstrap dev .env
+.PHONY: up seed map api clean bootstrap dev ci .env
 
 .env:
 	@if [ ! -f .env ]; then cp .env.example .env; fi
@@ -28,3 +28,15 @@ bootstrap: .env
 
 dev: bootstrap
 	$(MAKE) api
+
+ci:
+	bash scripts/ci/install_deps.sh
+	bash scripts/ci/format_check.sh
+	bash scripts/ci/lint.sh
+	bash scripts/ci/type_check.sh
+	bash scripts/ci/build.sh
+	bash scripts/ci/openapi_contract.sh
+	bash scripts/ci/contract_tests.sh
+	bash scripts/ci/unit_tests.sh
+	bash scripts/ci/coverage_gate.sh
+	bash scripts/ci/security.sh

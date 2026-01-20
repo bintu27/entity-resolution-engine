@@ -1,0 +1,82 @@
+name: quality-gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Preflight - install dependencies
+        run: bash scripts/ci/install_deps.sh
+
+      - name: Formatting (check)
+        run: bash scripts/ci/format_check.sh
+
+      - name: Lint
+        run: bash scripts/ci/lint.sh
+
+      - name: Type checks
+        run: bash scripts/ci/type_check.sh
+
+      - name: Build gate
+        run: bash scripts/ci/build.sh
+
+      - name: OpenAPI contract validation
+        run: bash scripts/ci/openapi_contract.sh
+
+      - name: Checkout main for OpenAPI diff
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+
+      - name: OpenAPI breaking change check
+        if: github.event_name == 'pull_request'
+        run: |
+          cd main-src
+          python ../scripts/ci/generate_openapi.py --output ../reports/openapi-main.json
+          cd ..
+          python scripts/ci/check_openapi_breaking.py \
+            --base reports/openapi-main.json \
+            --current reports/openapi-current.json
+
+      - name: Contract tests
+        run: bash scripts/ci/contract_tests.sh
+
+      - name: Unit tests + coverage
+        run: bash scripts/ci/unit_tests.sh
+
+      - name: Coverage gate
+        run: bash scripts/ci/coverage_gate.sh
+
+      - name: Security gates
+        run: bash scripts/ci/security.sh
+
+      - name: Secret scanning
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-reports
+          path: reports/

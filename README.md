@@ -149,3 +149,22 @@ Basic unit tests cover season normalization, name similarity, deterministic UES 
 ```bash
 pytest
 ```
+
+## CI Quality Gates (local)
+The CI pipeline runs the same gates locally via scripts in `scripts/ci`. To execute the full set:
+```bash
+make ci
+```
+
+Individual gates can be run as needed:
+```bash
+bash scripts/ci/format_check.sh
+bash scripts/ci/lint.sh
+bash scripts/ci/type_check.sh
+bash scripts/ci/build.sh
+bash scripts/ci/openapi_contract.sh
+bash scripts/ci/contract_tests.sh
+bash scripts/ci/unit_tests.sh
+bash scripts/ci/coverage_gate.sh
+bash scripts/ci/security.sh
+```
