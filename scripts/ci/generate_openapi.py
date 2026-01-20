@@ -1,8 +1,13 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from entity_resolution_engine.api.main import app
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from entity_resolution_engine.api.main import app  # noqa: E402
 
 
 def main() -> None:
