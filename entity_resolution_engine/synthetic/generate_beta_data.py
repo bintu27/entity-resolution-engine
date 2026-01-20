@@ -64,7 +64,9 @@ def mutate_player_name(base_name: str, idx: int) -> str:
 def build_teams() -> Tuple[pd.DataFrame, Dict[str, str]]:
     shared_bases = take_slice(TEAM_BASE_NAMES, SHARED_TEAM_COUNT)
     remaining_needed = BETA_TEAM_COUNT - SHARED_TEAM_COUNT
-    unique_bases = take_slice(TEAM_BASE_NAMES, remaining_needed, start=SHARED_TEAM_COUNT)
+    unique_bases = take_slice(
+        TEAM_BASE_NAMES, remaining_needed, start=SHARED_TEAM_COUNT
+    )
 
     rows = []
     mapping: Dict[str, str] = {}
@@ -74,12 +76,16 @@ def build_teams() -> Tuple[pd.DataFrame, Dict[str, str]]:
     for idx, base in enumerate(shared_bases, start=1):
         display = mutate_team_name(base, idx)
         mapping[base] = display
-        rows.append({"id": team_id, "display_name": display, "region": next(region_cycle)})
+        rows.append(
+            {"id": team_id, "display_name": display, "region": next(region_cycle)}
+        )
         team_id += 1
 
     for idx, base in enumerate(unique_bases, start=len(shared_bases) + 1):
         display = mutate_team_name(base, idx)
-        rows.append({"id": team_id, "display_name": display, "region": next(region_cycle)})
+        rows.append(
+            {"id": team_id, "display_name": display, "region": next(region_cycle)}
+        )
         team_id += 1
 
     return pd.DataFrame(rows), mapping
@@ -88,10 +94,18 @@ def build_teams() -> Tuple[pd.DataFrame, Dict[str, str]]:
 def build_competitions() -> pd.DataFrame:
     shared_bases = take_slice(COMP_BASE_NAMES, SHARED_COMP_COUNT)
     remaining_needed = BETA_COMP_COUNT - SHARED_COMP_COUNT
-    unique_bases = take_slice(COMP_BASE_NAMES, remaining_needed, start=SHARED_COMP_COUNT)
+    unique_bases = take_slice(
+        COMP_BASE_NAMES, remaining_needed, start=SHARED_COMP_COUNT
+    )
 
-    names = [mutate_competition_name(name, idx) for idx, name in enumerate(shared_bases, start=1)]
-    names += [mutate_competition_name(name, idx + 100) for idx, name in enumerate(unique_bases, start=1)]
+    names = [
+        mutate_competition_name(name, idx)
+        for idx, name in enumerate(shared_bases, start=1)
+    ]
+    names += [
+        mutate_competition_name(name, idx + 100)
+        for idx, name in enumerate(unique_bases, start=1)
+    ]
     locale_cycle = cycle(COUNTRIES)
     rows = []
     for idx, name in enumerate(names, start=1):
@@ -99,7 +113,9 @@ def build_competitions() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_seasons(competitions: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[int, Dict[str, int]]]:
+def build_seasons(
+    competitions: pd.DataFrame,
+) -> Tuple[pd.DataFrame, Dict[int, Dict[str, int]]]:
     rows = []
     meta: Dict[int, Dict[str, int]] = {}
     season_id = 1
@@ -120,9 +136,14 @@ def build_players(teams: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, List[int
     rows = []
     players_by_team: Dict[str, List[int]] = {name: [] for name in teams["display_name"]}
 
-    shared_names = [mutate_player_name(name, idx) for idx, name in enumerate(PLAYER_NAME_POOL[:SHARED_PLAYER_COUNT], start=1)]
+    shared_names = [
+        mutate_player_name(name, idx)
+        for idx, name in enumerate(PLAYER_NAME_POOL[:SHARED_PLAYER_COUNT], start=1)
+    ]
     remaining_needed = BETA_PLAYER_COUNT - SHARED_PLAYER_COUNT
-    unique_names = PLAYER_NAME_POOL[SHARED_PLAYER_COUNT : SHARED_PLAYER_COUNT + remaining_needed]
+    unique_names = PLAYER_NAME_POOL[
+        SHARED_PLAYER_COUNT : SHARED_PLAYER_COUNT + remaining_needed
+    ]
     names = shared_names + unique_names
 
     for idx, full_name in enumerate(names, start=1):
@@ -146,7 +167,9 @@ def build_players(teams: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, List[int
     return pd.DataFrame(rows), players_by_team
 
 
-def build_matches(season_meta: Dict[int, Dict[str, int]], team_names: List[str]) -> pd.DataFrame:
+def build_matches(
+    season_meta: Dict[int, Dict[str, int]], team_names: List[str]
+) -> pd.DataFrame:
     season_ids = list(season_meta.keys())
     rows = []
     for match_id in range(1, BETA_MATCH_COUNT + 1):
@@ -170,7 +193,11 @@ def build_matches(season_meta: Dict[int, Dict[str, int]], team_names: List[str])
     return pd.DataFrame(rows)
 
 
-def build_lineups(matches: pd.DataFrame, players_by_team: Dict[str, List[int]], player_lookup: Dict[int, str]) -> pd.DataFrame:
+def build_lineups(
+    matches: pd.DataFrame,
+    players_by_team: Dict[str, List[int]],
+    player_lookup: Dict[int, str],
+) -> pd.DataFrame:
     rows = []
     lineup_id = 1
     for match in matches.itertuples(index=False):
@@ -193,12 +220,21 @@ def build_lineups(matches: pd.DataFrame, players_by_team: Dict[str, List[int]], 
 
 
 def write_table(conn, table: str, df: pd.DataFrame) -> None:
-    df.to_sql(table, conn, if_exists="append", index=False, chunksize=CHUNKSIZE, method="multi")
+    df.to_sql(
+        table,
+        conn,
+        if_exists="append",
+        index=False,
+        chunksize=CHUNKSIZE,
+        method="multi",
+    )
 
 
 def main():
     random.seed(RANDOM_SEED)
-    engine = get_engine("SOURCE_BETA_DB_URL", "postgresql://postgres:pass@localhost:5434/source_beta_db")
+    engine = get_engine(
+        "SOURCE_BETA_DB_URL", "postgresql://postgres:pass@localhost:5434/source_beta_db"
+    )
     init_db(engine, "beta_schema.sql")
 
     teams, _ = build_teams()
@@ -210,7 +246,14 @@ def main():
     lineups = build_lineups(matches, players_by_team, player_lookup)
 
     with engine.begin() as conn:
-        for table in ["lineups", "matches", "players", "seasons", "competitions", "teams"]:
+        for table in [
+            "lineups",
+            "matches",
+            "players",
+            "seasons",
+            "competitions",
+            "teams",
+        ]:
             conn.execute(text(f"DELETE FROM {table}"))
 
         write_table(conn, "teams", teams)

@@ -3,15 +3,22 @@ from typing import Dict, List, Tuple
 import pandas as pd
 import yaml
 
-from entity_resolution_engine.normalizers.name_normalizer import normalize_name, token_sort_ratio
+from entity_resolution_engine.normalizers.name_normalizer import (
+    normalize_name,
+    token_sort_ratio,
+)
 from entity_resolution_engine.lineage.lineage_builder import build_lineage
 from entity_resolution_engine.ues_writer.writer import generate_ues_id
 
 CONFIG_PATH = (
-    __import__("pathlib").Path(__file__).resolve().parents[1] / "config" / "thresholds.yml"
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "config"
+    / "thresholds.yml"
 )
 RULES_PATH = (
-    __import__("pathlib").Path(__file__).resolve().parents[1] / "config" / "mapping_rules.yml"
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "config"
+    / "mapping_rules.yml"
 )
 with CONFIG_PATH.open() as f:
     THRESHOLDS = yaml.safe_load(f)
@@ -53,7 +60,9 @@ def match_teams(alpha_teams: pd.DataFrame, beta_teams: pd.DataFrame) -> List[Dic
     return matches
 
 
-def build_team_entities(matches: List[Dict]) -> Tuple[List[Dict], Dict[int, str], Dict[int, str]]:
+def build_team_entities(
+    matches: List[Dict],
+) -> Tuple[List[Dict], Dict[int, str], Dict[int, str]]:
     entities: List[Dict] = []
     alpha_map: Dict[int, str] = {}
     beta_map: Dict[int, str] = {}

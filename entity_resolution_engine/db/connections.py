@@ -22,7 +22,7 @@ def init_db(engine: Engine, schema_file: str) -> None:
     path = BASE_DIR / schema_file
     sql = path.read_text()
     with engine.connect() as conn:
-        for statement in sql.split(';'):
+        for statement in sql.split(";"):
             stmt = statement.strip()
             if stmt:
                 conn.execute(text(stmt))

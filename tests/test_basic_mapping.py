@@ -4,7 +4,10 @@ import pandas as pd
 
 from entity_resolution_engine.matchers.players_matcher import match_players
 from entity_resolution_engine.normalizers.season_normalizer import normalize_season
-from entity_resolution_engine.normalizers.name_normalizer import normalize_name, token_sort_ratio
+from entity_resolution_engine.normalizers.name_normalizer import (
+    normalize_name,
+    token_sort_ratio,
+)
 from entity_resolution_engine.ues_writer.writer import generate_ues_id
 
 

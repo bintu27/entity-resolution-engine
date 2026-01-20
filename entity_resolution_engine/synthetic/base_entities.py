@@ -46,7 +46,9 @@ TEAM_NOUNS = [
     "Pioneers",
 ]
 
-TEAM_BASE_NAMES = [f"{adj} {noun}" for adj, noun in product(TEAM_ADJECTIVES, TEAM_NOUNS)]
+TEAM_BASE_NAMES = [
+    f"{adj} {noun}" for adj, noun in product(TEAM_ADJECTIVES, TEAM_NOUNS)
+]
 
 COMP_LOCATIONS = [
     "Atlantic",
@@ -86,7 +88,9 @@ COMP_TITLES = [
     "Trophy",
 ]
 
-COMP_BASE_NAMES = [f"{location} {title}" for location, title in product(COMP_LOCATIONS, COMP_TITLES)]
+COMP_BASE_NAMES = [
+    f"{location} {title}" for location, title in product(COMP_LOCATIONS, COMP_TITLES)
+]
 
 COUNTRIES = [
     "England",
@@ -276,7 +280,9 @@ LAST_NAMES = [
     "Patel",
 ]
 
-PLAYER_NAME_POOL = [f"{first} {last}" for first, last in product(FIRST_NAMES, LAST_NAMES)]
+PLAYER_NAME_POOL = [
+    f"{first} {last}" for first, last in product(FIRST_NAMES, LAST_NAMES)
+]
 
 POSITIONS = [
     "GK",

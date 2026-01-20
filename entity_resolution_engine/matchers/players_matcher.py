@@ -1,12 +1,17 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import pandas as pd
 import yaml
 
-from entity_resolution_engine.normalizers.name_normalizer import normalize_name, token_sort_ratio
+from entity_resolution_engine.normalizers.name_normalizer import (
+    normalize_name,
+    token_sort_ratio,
+)
 
 CONFIG_PATH = (
-    __import__("pathlib").Path(__file__).resolve().parents[1] / "config" / "thresholds.yml"
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "config"
+    / "thresholds.yml"
 )
 with CONFIG_PATH.open() as f:
     THRESHOLDS = yaml.safe_load(f)
@@ -35,7 +40,8 @@ def match_players(
     beta_teams: pd.DataFrame,
 ) -> List[Dict]:
     beta_team_lookup = {
-        normalize_name(row["display_name"]): row["id"] for _, row in beta_teams.iterrows()
+        normalize_name(row["display_name"]): row["id"]
+        for _, row in beta_teams.iterrows()
     }
     matches: List[Dict] = []
     for _, alpha_row in alpha_players.iterrows():
@@ -45,11 +51,22 @@ def match_players(
         for _, beta_row in beta_players.iterrows():
             norm_beta_name = normalize_name(beta_row["full_name"])
             name_score = token_sort_ratio(norm_alpha_name, norm_beta_name)
-            dob_score = _dob_similarity(alpha_row.get("dob"), beta_row.get("birth_year"))
+            dob_score = _dob_similarity(
+                alpha_row.get("dob"), beta_row.get("birth_year")
+            )
             beta_team_norm = normalize_name(beta_row.get("team_name"))
             beta_team_id = beta_team_lookup.get(beta_team_norm)
-            team_score = 1.0 if beta_team_id and team_map.get(alpha_row.get("team_id")) == beta_team_id else 0.0
-            confidence = WEIGHTS["name"] * name_score + WEIGHTS["dob"] * dob_score + WEIGHTS["team"] * team_score
+            team_score = (
+                1.0
+                if beta_team_id
+                and team_map.get(alpha_row.get("team_id")) == beta_team_id
+                else 0.0
+            )
+            confidence = (
+                WEIGHTS["name"] * name_score
+                + WEIGHTS["dob"] * dob_score
+                + WEIGHTS["team"] * team_score
+            )
             if confidence > best_score:
                 best_score = confidence
                 best_match = beta_row
@@ -58,7 +75,9 @@ def match_players(
                     "dob_similarity": dob_score,
                     "team_similarity": team_score,
                 }
-        if best_match is not None and best_score >= THRESHOLDS.get("CONFIDENCE_AUTOPASS", 0.85):
+        if best_match is not None and best_score >= THRESHOLDS.get(
+            "CONFIDENCE_AUTOPASS", 0.85
+        ):
             matches.append(
                 {
                     "alpha_player_id": alpha_row["player_id"],

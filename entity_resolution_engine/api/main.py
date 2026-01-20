@@ -8,7 +8,9 @@ from entity_resolution_engine.cli.run_mapping import main as run_mapping
 from entity_resolution_engine.db.connections import get_engine
 
 app = FastAPI(title="Unified Entity Store API")
-ues_engine = get_engine("UES_DB_URL", "postgresql://postgres:pass@localhost:5435/ues_db")
+ues_engine = get_engine(
+    "UES_DB_URL", "postgresql://postgres:pass@localhost:5435/ues_db"
+)
 
 
 @app.get("/health")

@@ -4,7 +4,9 @@ import pandas as pd
 import yaml
 
 CONFIG_PATH = (
-    __import__("pathlib").Path(__file__).resolve().parents[1] / "config" / "thresholds.yml"
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "config"
+    / "thresholds.yml"
 )
 with CONFIG_PATH.open() as f:
     THRESHOLDS = yaml.safe_load(f)
@@ -54,12 +56,16 @@ def match_matches(
                 continue
 
             team_score = 1.0
-            date_score = _date_similarity(alpha_row.get("match_date"), beta_row.get("match_date"))
+            date_score = _date_similarity(
+                alpha_row.get("match_date"), beta_row.get("match_date")
+            )
             confidence = 0.4 * team_score + 0.3 * date_score + 0.3
             if confidence > best_score:
                 best_score = confidence
                 best_match = beta_row
-        if best_match is not None and best_score >= THRESHOLDS.get("CONFIDENCE_REVIEW", 0.6):
+        if best_match is not None and best_score >= THRESHOLDS.get(
+            "CONFIDENCE_REVIEW", 0.6
+        ):
             matches.append(
                 {
                     "alpha_match_id": alpha_row["match_id"],

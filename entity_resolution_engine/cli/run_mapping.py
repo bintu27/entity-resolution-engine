@@ -5,7 +5,10 @@ from entity_resolution_engine.matchers.competitions_matcher import (
     build_competition_entities,
     match_competitions,
 )
-from entity_resolution_engine.matchers.seasons_matcher import build_season_entities, match_seasons
+from entity_resolution_engine.matchers.seasons_matcher import (
+    build_season_entities,
+    match_seasons,
+)
 from entity_resolution_engine.matchers.players_matcher import match_players
 from entity_resolution_engine.matchers.matches_matcher import match_matches
 from entity_resolution_engine.merger.teams_merge import merge_teams
@@ -27,19 +30,30 @@ def main():
     writer.write_teams(team_entities)
     alpha_team_to_beta = {m["alpha_team_id"]: m["beta_team_id"] for m in team_matches}
 
-    comp_matches = match_competitions(alpha_data["competitions"], beta_data["competitions"])
-    comp_entities, alpha_comp_to_ues, beta_comp_to_ues = build_competition_entities(comp_matches)
+    comp_matches = match_competitions(
+        alpha_data["competitions"], beta_data["competitions"]
+    )
+    comp_entities, alpha_comp_to_ues, beta_comp_to_ues = build_competition_entities(
+        comp_matches
+    )
     writer.write_competitions(comp_entities)
 
-    comp_map = {m["alpha_competition_id"]: m["beta_competition_id"] for m in comp_matches}
-    season_matches = match_seasons(alpha_data["seasons"], beta_data["seasons"], comp_map)
+    comp_map = {
+        m["alpha_competition_id"]: m["beta_competition_id"] for m in comp_matches
+    }
+    season_matches = match_seasons(
+        alpha_data["seasons"], beta_data["seasons"], comp_map
+    )
     season_entities, alpha_season_to_ues, beta_season_to_ues = build_season_entities(
         season_matches, alpha_comp_to_ues
     )
     writer.write_seasons(season_entities)
 
     player_matches = match_players(
-        alpha_data["players"], beta_data["players"], alpha_team_to_beta, beta_data["teams"]
+        alpha_data["players"],
+        beta_data["players"],
+        alpha_team_to_beta,
+        beta_data["teams"],
     )
     player_entities, alpha_player_to_ues, beta_player_to_ues = merge_players(
         player_matches,
@@ -49,7 +63,9 @@ def main():
     )
     writer.write_players(player_entities)
 
-    competition_map_raw = {m["alpha_competition_id"]: m["beta_competition_id"] for m in comp_matches}
+    competition_map_raw = {
+        m["alpha_competition_id"]: m["beta_competition_id"] for m in comp_matches
+    }
     season_map_raw = {m["alpha_season_id"]: m["beta_season_id"] for m in season_matches}
     match_matches_result = match_matches(
         alpha_data["matches"],

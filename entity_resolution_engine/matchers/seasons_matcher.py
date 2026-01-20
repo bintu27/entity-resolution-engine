@@ -8,7 +8,9 @@ from entity_resolution_engine.lineage.lineage_builder import build_lineage
 from entity_resolution_engine.ues_writer.writer import generate_ues_id
 
 CONFIG_PATH = (
-    __import__("pathlib").Path(__file__).resolve().parents[1] / "config" / "thresholds.yml"
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "config"
+    / "thresholds.yml"
 )
 with CONFIG_PATH.open() as f:
     THRESHOLDS = yaml.safe_load(f)
@@ -56,17 +58,28 @@ def build_season_entities(
     alpha_map: Dict[int, str] = {}
     beta_map: Dict[int, str] = {}
     for match in matches:
-        ues_id = generate_ues_id("UESS", match["alpha_season_id"], match["beta_season_id"])
+        ues_id = generate_ues_id(
+            "UESS", match["alpha_season_id"], match["beta_season_id"]
+        )
         lineage = build_lineage(
             source_type="season",
             alpha_id=match["alpha_season_id"],
             beta_id=match["beta_season_id"],
             confidence=match["confidence"],
-            breakdown={"start_year": match.get("start_year"), "end_year": match.get("end_year")},
+            breakdown={
+                "start_year": match.get("start_year"),
+                "end_year": match.get("end_year"),
+            },
         )
-        competition_ues_id = competition_ues_map.get(match.get("alpha_competition_id"))
-        if competition_ues_id is None:
-            competition_ues_id = competition_ues_map.get(match.get("beta_competition_id"))
+        alpha_competition_id = match.get("alpha_competition_id")
+        beta_competition_id = match.get("beta_competition_id")
+        competition_ues_id = (
+            competition_ues_map.get(alpha_competition_id)
+            if alpha_competition_id is not None
+            else None
+        )
+        if competition_ues_id is None and beta_competition_id is not None:
+            competition_ues_id = competition_ues_map.get(beta_competition_id)
 
         record = {
             "ues_season_id": ues_id,
