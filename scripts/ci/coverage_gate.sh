@@ -2,4 +2,8 @@
 set -euo pipefail
 
 python -m coverage json -o reports/coverage.json
-python scripts/ci/check_coverage.py --report reports/coverage.json --line-min 80 --branch-min 70
+if [ -f ".ci/coverage_baseline.json" ]; then
+  python scripts/ci/check_coverage.py --report reports/coverage.json --baseline .ci/coverage_baseline.json
+else
+  python scripts/ci/check_coverage.py --report reports/coverage.json --line-min 80 --branch-min 70
+fi
