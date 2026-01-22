@@ -167,4 +167,5 @@ bash scripts/ci/contract_tests.sh
 bash scripts/ci/unit_tests.sh
 bash scripts/ci/coverage_gate.sh
 bash scripts/ci/security.sh
+bash scripts/ci/performance_tests.sh
 ```

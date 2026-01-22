@@ -35,6 +35,9 @@ jobs:
       - name: Security gates
         run: bash scripts/ci/security.sh
 
+      - name: Performance tests
+        run: bash scripts/ci/performance_tests.sh
+
       - name: Secret scanning
         uses: gitleaks/gitleaks-action@v2
         env:

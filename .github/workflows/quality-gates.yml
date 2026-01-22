@@ -68,6 +68,9 @@ jobs:
       - name: Coverage gate
         run: bash scripts/ci/coverage_gate.sh
 
+      - name: Performance tests
+        run: bash scripts/ci/performance_tests.sh
+
       - name: Security gates
         run: bash scripts/ci/security.sh
 
