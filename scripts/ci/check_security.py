@@ -11,8 +11,16 @@ def main() -> None:
 
     report_path = Path(args.report)
     data = json.loads(report_path.read_text())
-    vulnerabilities = data.get("vulnerabilities", [])
-    vuln_count = len(vulnerabilities)
+    vuln_count = 0
+    if isinstance(data, dict):
+        if "vulnerabilities" in data:
+            vuln_count = len(data.get("vulnerabilities", []))
+        elif "dependencies" in data:
+            for dependency in data.get("dependencies", []):
+                vuln_count += len(dependency.get("vulns", []))
+    elif isinstance(data, list):
+        for dependency in data:
+            vuln_count += len(dependency.get("vulns", []))
 
     if args.baseline:
         baseline_data = json.loads(Path(args.baseline).read_text())
