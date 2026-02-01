@@ -16,12 +16,13 @@ def merge_matches(
 ) -> List[Dict]:
     records: List[Dict] = []
     alpha_lookup = {row["match_id"]: row for _, row in alpha_matches.iterrows()}
-    beta_lookup = {row["id"]: row for _, row in beta_matches.iterrows()}
-
     for match in matches:
         alpha_row = alpha_lookup.get(match["alpha_match_id"])
-        beta_row = beta_lookup.get(match["beta_match_id"])
-        ues_id = generate_ues_id("UESM", match["alpha_match_id"], match["beta_match_id"])
+        if alpha_row is None:
+            continue
+        ues_id = generate_ues_id(
+            "UESM", match["alpha_match_id"], match["beta_match_id"]
+        )
         lineage = build_lineage(
             source_type="match",
             alpha_id=match["alpha_match_id"],
@@ -35,7 +36,9 @@ def merge_matches(
                 "home_team_ues_id": team_ues_map.get(alpha_row.get("home_team_id")),
                 "away_team_ues_id": team_ues_map.get(alpha_row.get("away_team_id")),
                 "season_ues_id": season_ues_map.get(alpha_row.get("season_id")),
-                "competition_ues_id": competition_ues_map.get(alpha_row.get("competition_id")),
+                "competition_ues_id": competition_ues_map.get(
+                    alpha_row.get("competition_id")
+                ),
                 "match_date": alpha_row.get("match_date"),
                 "merge_confidence": match["confidence"],
                 "lineage": lineage,

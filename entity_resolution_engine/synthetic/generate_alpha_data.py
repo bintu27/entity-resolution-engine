@@ -44,11 +44,15 @@ def build_competitions() -> pd.DataFrame:
     country_cycle = cycle(COUNTRIES)
     rows = []
     for idx, name in enumerate(names, start=1):
-        rows.append({"competition_id": idx, "name": name, "country": next(country_cycle)})
+        rows.append(
+            {"competition_id": idx, "name": name, "country": next(country_cycle)}
+        )
     return pd.DataFrame(rows)
 
 
-def build_seasons(competitions: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[int, Dict[str, int]]]:
+def build_seasons(
+    competitions: pd.DataFrame,
+) -> Tuple[pd.DataFrame, Dict[int, Dict[str, int]]]:
     rows = []
     meta: Dict[int, Dict[str, int]] = {}
     season_id = 1
@@ -57,8 +61,17 @@ def build_seasons(competitions: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[int, D
         for offset in range(SEASONS_PER_COMP):
             start_year = base_year + offset
             name = f"{start_year}/{str(start_year + 1)[-2:]}"
-            rows.append({"season_id": season_id, "name": name, "competition_id": comp.competition_id})
-            meta[season_id] = {"competition_id": comp.competition_id, "start_year": start_year}
+            rows.append(
+                {
+                    "season_id": season_id,
+                    "name": name,
+                    "competition_id": comp.competition_id,
+                }
+            )
+            meta[season_id] = {
+                "competition_id": comp.competition_id,
+                "start_year": start_year,
+            }
             season_id += 1
     return pd.DataFrame(rows), meta
 
@@ -67,7 +80,9 @@ def build_players(teams: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[int, List[int
     team_cycle = cycle(teams["team_id"].tolist())
     nationality_cycle = cycle(NATIONALITIES)
     rows = []
-    players_by_team: Dict[int, List[int]] = {team_id: [] for team_id in teams["team_id"]}
+    players_by_team: Dict[int, List[int]] = {
+        team_id: [] for team_id in teams["team_id"]
+    }
     for idx, full_name in enumerate(PLAYER_NAME_POOL[:ALPHA_PLAYER_COUNT], start=1):
         year = random.randint(1985, 2003)
         dob = dt.date(year, random.randint(1, 12), random.randint(1, 28))
@@ -89,7 +104,9 @@ def build_players(teams: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[int, List[int
     return pd.DataFrame(rows), players_by_team
 
 
-def build_matches(season_meta: Dict[int, Dict[str, int]], team_ids: List[int]) -> pd.DataFrame:
+def build_matches(
+    season_meta: Dict[int, Dict[str, int]], team_ids: List[int]
+) -> pd.DataFrame:
     season_ids = list(season_meta.keys())
     rows = []
     for match_id in range(1, ALPHA_MATCH_COUNT + 1):
@@ -113,7 +130,9 @@ def build_matches(season_meta: Dict[int, Dict[str, int]], team_ids: List[int]) -
     return pd.DataFrame(rows)
 
 
-def build_lineups(matches: pd.DataFrame, players_by_team: Dict[int, List[int]]) -> pd.DataFrame:
+def build_lineups(
+    matches: pd.DataFrame, players_by_team: Dict[int, List[int]]
+) -> pd.DataFrame:
     rows = []
     lineup_id = 1
     for match in matches.itertuples(index=False):
@@ -136,12 +155,22 @@ def build_lineups(matches: pd.DataFrame, players_by_team: Dict[int, List[int]]) 
 
 
 def write_table(conn, table: str, df: pd.DataFrame) -> None:
-    df.to_sql(table, conn, if_exists="append", index=False, chunksize=CHUNKSIZE, method="multi")
+    df.to_sql(
+        table,
+        conn,
+        if_exists="append",
+        index=False,
+        chunksize=CHUNKSIZE,
+        method="multi",
+    )
 
 
 def main():
     random.seed(RANDOM_SEED)
-    engine = get_engine("SOURCE_ALPHA_DB_URL", "postgresql://postgres:pass@localhost:5433/source_alpha_db")
+    engine = get_engine(
+        "SOURCE_ALPHA_DB_URL",
+        "postgresql://postgres:pass@localhost:5433/source_alpha_db",
+    )
     init_db(engine, "alpha_schema.sql")
 
     teams = build_teams()
@@ -152,7 +181,14 @@ def main():
     lineups = build_lineups(matches, players_by_team)
 
     with engine.begin() as conn:
-        for table in ["lineups", "matches", "players", "seasons", "competitions", "teams"]:
+        for table in [
+            "lineups",
+            "matches",
+            "players",
+            "seasons",
+            "competitions",
+            "teams",
+        ]:
             conn.execute(text(f"DELETE FROM {table}"))
 
         write_table(conn, "teams", teams)

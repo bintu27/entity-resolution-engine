@@ -6,7 +6,9 @@ from entity_resolution_engine.lineage.lineage_builder import build_lineage
 from entity_resolution_engine.ues_writer.writer import generate_ues_id
 
 
-def merge_teams(matches: List[Dict], alpha_teams: pd.DataFrame, beta_teams: pd.DataFrame) -> Tuple[List[Dict], Dict[int, str], Dict[int, str]]:
+def merge_teams(
+    matches: List[Dict], alpha_teams: pd.DataFrame, beta_teams: pd.DataFrame
+) -> Tuple[List[Dict], Dict[int, str], Dict[int, str]]:
     records: List[Dict] = []
     alpha_map: Dict[int, str] = {}
     beta_map: Dict[int, str] = {}
@@ -16,6 +18,8 @@ def merge_teams(matches: List[Dict], alpha_teams: pd.DataFrame, beta_teams: pd.D
     for match in matches:
         alpha_row = alpha_lookup.get(match["alpha_team_id"])
         beta_row = beta_lookup.get(match["beta_team_id"])
+        if alpha_row is None and beta_row is None:
+            continue
         ues_id = generate_ues_id("UEST", match["alpha_team_id"], match["beta_team_id"])
         lineage = build_lineage(
             source_type="team",
@@ -24,8 +28,12 @@ def merge_teams(matches: List[Dict], alpha_teams: pd.DataFrame, beta_teams: pd.D
             confidence=match["confidence"],
             breakdown={"name_similarity": match["confidence"]},
         )
-        canonical_name = alpha_row["name"] if alpha_row is not None else beta_row.get("display_name")
-        canonical_country = alpha_row.get("country") if alpha_row is not None else beta_row.get("region")
+        if alpha_row is not None:
+            canonical_name = alpha_row["name"]
+            canonical_country = alpha_row.get("country")
+        else:
+            canonical_name = beta_row.get("display_name") if beta_row else None
+            canonical_country = beta_row.get("region") if beta_row else None
         records.append(
             {
                 "ues_team_id": ues_id,
