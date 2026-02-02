@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
