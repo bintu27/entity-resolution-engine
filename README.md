@@ -150,9 +150,26 @@ LLM validation is opt-in and used only for gray-zone or conflicting matches. Tog
 - `gray_zone` thresholds per entity type
 - Environment variables: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` (and `LLM_API_URL` for non-OpenAI providers).
 
+When validation is disabled or the provider is not configured, gray-zone matches are auto-approved to preserve the pre-LLM merge behavior.
+
+### Internal review, monitoring, and QA endpoints
 The API exposes internal-only endpoints protected by `X-Internal-API-Key` (set via `INTERNAL_API_KEY`):
-- Review queue: `GET /validation/reviews`, `POST /validation/reviews/{id}/approve`, `POST /validation/reviews/{id}/reject`
-- Monitoring: `GET /monitoring/anomalies`, `POST /monitoring/triage`, `GET /monitoring/report?run_id=...`
+- Review queue: `GET /validation/reviews`, `GET /validation/reviews/{id}`, `POST /validation/reviews/{id}/approve`, `POST /validation/reviews/{id}/reject`
+- Monitoring + QA: `GET /monitoring/anomalies`, `POST /monitoring/triage`, `GET /monitoring/report?run_id=...`
+
+Example calls (replace `$INTERNAL_API_KEY` and `$RUN_ID`):
+```bash
+curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
+  "http://localhost:8000/validation/reviews?status=REVIEW&limit=25"
+
+curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
+  "http://localhost:8000/monitoring/anomalies?run_id=$RUN_ID"
+
+curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
+  "http://localhost:8000/monitoring/report?run_id=$RUN_ID"
+```
+
+Each mapping run generates a `run_id` (logged by the CLI) that ties together `pipeline_run_metrics`, `llm_match_reviews`, and anomaly/triage records for auditing.
 
 Run metrics and review items are stored in UES tables (`pipeline_run_metrics`, `llm_match_reviews`, `anomaly_events`, `anomaly_triage_reports`) for auditing and QA.
 
