@@ -1,0 +1,4 @@
+max_llm_review_rate: 0.15
+max_gray_zone_rate: 0.35
+fail_on_high_severity_anomalies: true
+max_llm_error_rate: 0.05

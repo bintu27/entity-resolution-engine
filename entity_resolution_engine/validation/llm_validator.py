@@ -27,12 +27,13 @@ def validate_pair(
     llm_client: Optional[LLMClient] = None,
 ) -> ValidationResult:
     config = config or get_llm_validation_config()
+    # Router must check availability; validate_pair assumes available.
     if not config.enabled:
         return ValidationResult(
             decision="REVIEW",
             confidence=0.0,
-            reasons=["LLM validation disabled"],
-            risk_flags=[],
+            reasons=["LLM unavailable - validator should not have been called"],
+            risk_flags=["llm_unavailable"],
         )
 
     provider = os.getenv(config.provider_env, "")
@@ -42,7 +43,7 @@ def validate_pair(
         return ValidationResult(
             decision="REVIEW",
             confidence=0.0,
-            reasons=["LLM provider not configured"],
+            reasons=["LLM unavailable - validator should not have been called"],
             risk_flags=["llm_unavailable"],
         )
 
@@ -65,7 +66,11 @@ def validate_pair(
     user_prompt = json.dumps(payload, sort_keys=True)
     try:
         response = llm_client.request_json(SYSTEM_PROMPT, user_prompt)
-        return ValidationResult.model_validate(response)
+        result = ValidationResult.model_validate(response)
+        if getattr(llm_client, "last_invalid_json_retry", False):
+            if "llm_invalid_json_retry" not in result.risk_flags:
+                result.risk_flags.append("llm_invalid_json_retry")
+        return result
     except Exception:
         return ValidationResult(
             decision="REVIEW",

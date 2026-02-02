@@ -17,6 +17,8 @@ def test_openapi_contract_contains_expected_paths():
         "/lookup/player/by-alpha/{alpha_id}": {"get"},
         "/lookup/player/by-beta/{beta_id}": {"get"},
         "/ues/player/{ues_id}/lineage": {"get"},
+        "/monitoring/summary": {"get"},
+        "/monitoring/gates": {"get"},
     }
 
     for path, methods in expected_paths.items():

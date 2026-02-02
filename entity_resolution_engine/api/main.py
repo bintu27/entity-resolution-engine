@@ -26,8 +26,8 @@ def health():
 
 @app.post("/mapping/run")
 def trigger_mapping():
-    run_mapping()
-    return {"status": "mapping_complete"}
+    run_id = run_mapping()
+    return {"status": "mapping_complete", "run_id": run_id}
 
 
 def _require_internal_key(
@@ -239,3 +239,106 @@ def run_triage(
 @app.get("/monitoring/report")
 def get_report(run_id: str, _: bool = Depends(_require_internal_key)):
     return build_quality_report(ues_engine, run_id)
+
+
+@app.get("/monitoring/summary")
+def get_summary(run_id: str, _: bool = Depends(_require_internal_key)):
+    with ues_engine.connect() as conn:
+        metrics_rows = (
+            conn.execute(
+                text("SELECT * FROM pipeline_run_metrics WHERE run_id = :run_id"),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
+        review_counts = (
+            conn.execute(
+                text(
+                    """
+                    SELECT status, COUNT(*) AS count
+                    FROM llm_match_reviews
+                    WHERE run_id = :run_id
+                    GROUP BY status
+                    """
+                ),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
+
+    totals = {
+        "total_candidates": 0,
+        "auto_match_count": 0,
+        "auto_reject_count": 0,
+        "gray_zone_sent_count": 0,
+        "llm_match_count": 0,
+        "llm_no_match_count": 0,
+        "llm_review_count": 0,
+        "llm_call_count": 0,
+        "llm_error_count": 0,
+        "llm_invalid_json_retry_count": 0,
+        "llm_total_latency_ms": 0.0,
+    }
+    for row in metrics_rows:
+        totals["total_candidates"] += int(row.get("total_candidates") or 0)
+        totals["auto_match_count"] += int(row.get("auto_match_count") or 0)
+        totals["auto_reject_count"] += int(row.get("auto_reject_count") or 0)
+        totals["gray_zone_sent_count"] += int(row.get("gray_zone_sent_count") or 0)
+        totals["llm_match_count"] += int(row.get("llm_match_count") or 0)
+        totals["llm_no_match_count"] += int(row.get("llm_no_match_count") or 0)
+        totals["llm_review_count"] += int(row.get("llm_review_count") or 0)
+        totals["llm_call_count"] += int(row.get("llm_call_count") or 0)
+        totals["llm_error_count"] += int(row.get("llm_error_count") or 0)
+        totals["llm_invalid_json_retry_count"] += int(
+            row.get("llm_invalid_json_retry_count") or 0
+        )
+        totals["llm_total_latency_ms"] += float(
+            row.get("llm_avg_latency_ms") or 0
+        ) * int(row.get("llm_call_count") or 0)
+
+    total_candidates = totals["total_candidates"] or 0
+    llm_call_count = totals["llm_call_count"] or 0
+    rates = {
+        "gray_zone_rate": (
+            totals["gray_zone_sent_count"] / total_candidates
+            if total_candidates
+            else 0.0
+        ),
+        "llm_review_rate": (
+            totals["llm_review_count"] / total_candidates if total_candidates else 0.0
+        ),
+        "llm_error_rate": (
+            totals["llm_error_count"] / llm_call_count if llm_call_count else 0.0
+        ),
+    }
+    llm_health = {
+        "llm_call_count": totals["llm_call_count"],
+        "llm_error_count": totals["llm_error_count"],
+        "llm_invalid_json_retry_count": totals["llm_invalid_json_retry_count"],
+        "llm_avg_latency_ms": (
+            totals["llm_total_latency_ms"] / llm_call_count if llm_call_count else None
+        ),
+    }
+    review_counts_payload: Dict[str, int] = {}
+    for row in review_counts:
+        review_counts_payload[row["status"]] = int(row["count"])
+
+    return {
+        "run_id": run_id,
+        "totals": totals,
+        "rates": rates,
+        "llm_health": llm_health,
+        "review_counts": review_counts_payload,
+    }
+
+
+@app.get("/monitoring/gates")
+def get_quality_gates(run_id: str, _: bool = Depends(_require_internal_key)):
+    query = text("SELECT * FROM quality_gate_results WHERE run_id = :run_id")
+    with ues_engine.connect() as conn:
+        row = conn.execute(query, {"run_id": run_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Quality gate result not found")
+    return _deserialize_json_fields(dict(row), ["failed_gates", "gate_values"])

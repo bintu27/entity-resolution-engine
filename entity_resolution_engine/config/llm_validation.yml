@@ -1,4 +1,10 @@
 enabled: false
+max_calls_per_entity_type_per_run: 200
+circuit_breaker:
+  window: 50
+  max_fail_rate: 0.20
+  max_invalid_json_rate: 0.10
+fallback_mode_when_llm_unhealthy: "auto_approve"
 gray_zone:
   team:
     low: 0.78

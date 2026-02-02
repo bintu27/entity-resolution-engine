@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
 import os
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
 
 import pandas as pd
 
@@ -19,8 +21,11 @@ from entity_resolution_engine.validation.config import (
     LLMValidationConfig,
     get_llm_validation_config,
 )
+from entity_resolution_engine.validation.llm_client import LLMClient
 from entity_resolution_engine.validation.llm_validator import validate_pair
 from entity_resolution_engine.validation.schemas import ValidationResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,6 +53,47 @@ def _llm_validation_available(config: LLMValidationConfig) -> bool:
     )
 
 
+def _build_review_item(
+    run_id: str,
+    entity_type: str,
+    candidate: ValidationCandidate,
+    result: ValidationResult,
+) -> Dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "entity_type": entity_type,
+        "left_source": candidate.left_source,
+        "left_id": candidate.left_id,
+        "right_source": candidate.right_source,
+        "right_id": candidate.right_id,
+        "matcher_score": candidate.matcher_score,
+        "signals": candidate.signals,
+        "llm_decision": result.decision,
+        "llm_confidence": result.confidence,
+        "reasons": result.reasons,
+        "risk_flags": result.risk_flags,
+        "status": "PENDING",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+
+
+def _fallback_decision(fallback_mode: str) -> ValidationResult:
+    if fallback_mode == "review":
+        return ValidationResult(
+            decision="REVIEW",
+            confidence=0.0,
+            reasons=["LLM unavailable - fallback mode set to review"],
+            risk_flags=["llm_fallback"],
+        )
+    return ValidationResult(
+        decision="MATCH",
+        confidence=0.0,
+        reasons=["LLM unavailable - fallback mode auto-approved"],
+        risk_flags=["llm_fallback"],
+    )
+
+
 def _route_matches(
     entity_type: str,
     matches: List[Dict[str, Any]],
@@ -65,6 +111,53 @@ def _route_matches(
     llm_match = 0
     llm_no_match = 0
     llm_review = 0
+    llm_call_count = 0
+    llm_error_count = 0
+    llm_invalid_json_retry_count = 0
+    llm_total_latency_ms = 0.0
+    llm_disabled_reason: Optional[str] = None
+    fallback_mode = config.fallback_mode_when_llm_unhealthy
+    circuit_breaker = config.circuit_breaker
+    circuit_window: Deque[Dict[str, bool]] = deque(maxlen=circuit_breaker.window)
+
+    llm_client: Optional[LLMClient] = None
+    llm_available = _llm_validation_available(config)
+    if llm_available:
+        llm_client = LLMClient(
+            provider=os.getenv(config.provider_env, ""),
+            model=os.getenv(config.model_env, ""),
+            api_key=os.getenv(config.api_key_env, ""),
+        )
+    else:
+        llm_disabled_reason = "llm_unavailable"
+
+    def _record_llm_outcome(result: ValidationResult) -> None:
+        nonlocal llm_error_count, llm_invalid_json_retry_count, llm_total_latency_ms
+        error_flag = "llm_error" in result.risk_flags
+        invalid_retry = "llm_invalid_json_retry" in result.risk_flags
+        if error_flag:
+            llm_error_count += 1
+        if invalid_retry:
+            llm_invalid_json_retry_count += 1
+        if llm_client and llm_client.last_latency_ms is not None:
+            llm_total_latency_ms += llm_client.last_latency_ms
+        circuit_window.append(
+            {"success": not error_flag, "invalid_json_retry": invalid_retry}
+        )
+
+    def _circuit_open() -> bool:
+        if len(circuit_window) < circuit_breaker.window:
+            return False
+        failures = sum(1 for entry in circuit_window if not entry["success"])
+        invalid_retries = sum(
+            1 for entry in circuit_window if entry["invalid_json_retry"]
+        )
+        fail_rate = failures / len(circuit_window)
+        invalid_rate = invalid_retries / len(circuit_window)
+        return (
+            fail_rate >= circuit_breaker.max_fail_rate
+            or invalid_rate >= circuit_breaker.max_invalid_json_rate
+        )
 
     for match in matches:
         candidate = adapter(match)
@@ -76,11 +169,33 @@ def _route_matches(
             approved.append(match)
             continue
 
-        if not _llm_validation_available(config):
-            approved.append(match)
+        if llm_disabled_reason:
+            fallback_result = _fallback_decision(fallback_mode)
+            decision = _decision_from_result(fallback_result)
+            if decision == "approved":
+                approved.append(match)
+            else:
+                llm_review += 1
+                review_items.append(
+                    _build_review_item(run_id, entity_type, candidate, fallback_result)
+                )
+            continue
+
+        if llm_call_count >= config.max_calls_per_entity_type_per_run:
+            llm_disabled_reason = "max_calls_exceeded"
+            fallback_result = _fallback_decision(fallback_mode)
+            decision = _decision_from_result(fallback_result)
+            if decision == "approved":
+                approved.append(match)
+            else:
+                llm_review += 1
+                review_items.append(
+                    _build_review_item(run_id, entity_type, candidate, fallback_result)
+                )
             continue
 
         gray_zone_sent += 1
+        llm_call_count += 1
         result = validate_pair(
             entity_type,
             candidate.left,
@@ -88,7 +203,11 @@ def _route_matches(
             candidate.matcher_score,
             candidate.signals,
             config=config,
+            llm_client=llm_client,
         )
+        _record_llm_outcome(result)
+        if _circuit_open():
+            llm_disabled_reason = "circuit_breaker_open"
         decision = _decision_from_result(result)
         if decision == "approved":
             approved.append(match)
@@ -99,25 +218,12 @@ def _route_matches(
         else:
             llm_review += 1
             review_items.append(
-                {
-                    "run_id": run_id,
-                    "entity_type": entity_type,
-                    "left_source": candidate.left_source,
-                    "left_id": candidate.left_id,
-                    "right_source": candidate.right_source,
-                    "right_id": candidate.right_id,
-                    "matcher_score": candidate.matcher_score,
-                    "signals": candidate.signals,
-                    "llm_decision": result.decision,
-                    "llm_confidence": result.confidence,
-                    "reasons": result.reasons,
-                    "risk_flags": result.risk_flags,
-                    "status": "PENDING",
-                    "created_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc),
-                }
+                _build_review_item(run_id, entity_type, candidate, result)
             )
 
+    llm_avg_latency_ms = (
+        llm_total_latency_ms / llm_call_count if llm_call_count else None
+    )
     metrics = {
         "run_id": run_id,
         "entity_type": entity_type,
@@ -130,7 +236,23 @@ def _route_matches(
         "llm_match_count": llm_match,
         "llm_no_match_count": llm_no_match,
         "llm_review_count": llm_review,
+        "llm_call_count": llm_call_count,
+        "llm_error_count": llm_error_count,
+        "llm_invalid_json_retry_count": llm_invalid_json_retry_count,
+        "llm_avg_latency_ms": llm_avg_latency_ms,
+        "llm_fallback_mode": fallback_mode,
+        "llm_disabled_reason": llm_disabled_reason,
     }
+    logger.info(
+        "LLM routing summary run_id=%s entity_type=%s total=%s llm_calls=%s "
+        "errors=%s fallback_mode=%s",
+        run_id,
+        entity_type,
+        len(matches),
+        llm_call_count,
+        llm_error_count,
+        fallback_mode,
+    )
     return RoutingOutcome(approved, rejected, review_items, metrics)
 
 
