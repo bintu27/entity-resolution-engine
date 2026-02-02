@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from statistics import mean, stdev
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -22,7 +22,7 @@ def detect_anomalies(
     entity_type: str,
     lookback: int = 8,
     z_threshold: float = 2.0,
-) -> List[Dict[str, float]]:
+) -> List[Dict[str, float | str]]:
     with engine.connect() as conn:
         current = (
             conn.execute(
@@ -40,6 +40,7 @@ def detect_anomalies(
         )
         if not current:
             return []
+        current_row: Dict[str, Any] = dict(current)
         baseline_rows = (
             conn.execute(
                 text(
@@ -56,10 +57,12 @@ def detect_anomalies(
             .all()
         )
 
-    if len(baseline_rows) < 2:
+    baseline_data: List[Dict[str, Any]] = [dict(row) for row in baseline_rows]
+
+    if len(baseline_data) < 2:
         return []
 
-    def _rate(row: Dict[str, float], numerator: str) -> float:
+    def _rate(row: Mapping[str, Any], numerator: str) -> float:
         total = row.get("total_candidates") or 0
         if total <= 0:
             return 0.0
@@ -67,18 +70,18 @@ def detect_anomalies(
 
     metrics = {
         "gray_zone_rate": (
-            float(current.get("gray_zone_sent_count") or 0)
-            / max(float(current.get("total_candidates") or 1), 1.0)
+            float(current_row.get("gray_zone_sent_count") or 0)
+            / max(float(current_row.get("total_candidates") or 1), 1.0)
         ),
-        "llm_review_rate": _rate(current, "llm_review_count"),
-        "auto_match_rate": _rate(current, "auto_match_count"),
-        "auto_reject_rate": _rate(current, "auto_reject_count"),
+        "llm_review_rate": _rate(current_row, "llm_review_count"),
+        "auto_match_rate": _rate(current_row, "auto_match_count"),
+        "auto_reject_rate": _rate(current_row, "auto_reject_count"),
     }
 
     baseline_metrics: Dict[str, List[float]] = {}
     for key in metrics:
         values: List[float] = []
-        for row in baseline_rows:
+        for row in baseline_data:
             if key == "gray_zone_rate":
                 values.append(
                     float(row.get("gray_zone_sent_count") or 0)
@@ -92,7 +95,7 @@ def detect_anomalies(
                 values.append(_rate(row, "auto_reject_count"))
         baseline_metrics[key] = values
 
-    anomalies: List[Dict[str, float]] = []
+    anomalies: List[Dict[str, float | str]] = []
     for metric_name, current_value in metrics.items():
         z = _z_score(current_value, baseline_metrics[metric_name])
         if z is None or abs(z) < z_threshold:

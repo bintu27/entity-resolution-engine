@@ -19,9 +19,10 @@ class LLMClient:
         self.provider = provider
         self.model = model
         self.api_key = api_key
-        self.api_url = api_url or self._default_api_url(provider)
-        if not self.api_url:
+        api_url = api_url or self._default_api_url(provider)
+        if not api_url:
             raise ValueError("LLM API URL is required")
+        self.api_url: str = api_url
         self.timeout_s = timeout_s
 
     @staticmethod

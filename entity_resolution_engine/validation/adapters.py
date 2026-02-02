@@ -35,6 +35,16 @@ def _conflict_flags(*flags: Optional[str]) -> List[str]:
     return [flag for flag in flags if flag]
 
 
+def _normalize_country(value: Any) -> str:
+    return normalize_country(str(value)) if value is not None else ""
+
+
+def _coerce_int(value: Any) -> Optional[int]:
+    if value is None or pd.isna(value):
+        return None
+    return int(value)
+
+
 def adapt_team_match(
     match: Dict[str, Any], alpha_teams: pd.DataFrame, beta_teams: pd.DataFrame
 ) -> ValidationCandidate:
@@ -44,8 +54,8 @@ def adapt_team_match(
     beta_row = beta_lookup[match["beta_team_id"]]
     alpha_name = normalize_name(alpha_row.get("name", ""))
     beta_name = normalize_name(beta_row.get("display_name", ""))
-    alpha_country = normalize_country(alpha_row.get("country"))
-    beta_country = normalize_country(beta_row.get("region"))
+    alpha_country = _normalize_country(alpha_row.get("country"))
+    beta_country = _normalize_country(beta_row.get("region"))
     conflict = (
         "country_mismatch"
         if alpha_country and beta_country and alpha_country != beta_country
@@ -76,8 +86,8 @@ def adapt_competition_match(
     beta_row = beta_lookup[match["beta_competition_id"]]
     alpha_name = normalize_competition(alpha_row.get("name", ""))
     beta_name = normalize_competition(beta_row.get("title", ""))
-    alpha_country = normalize_country(alpha_row.get("country"))
-    beta_country = normalize_country(beta_row.get("locale"))
+    alpha_country = _normalize_country(alpha_row.get("country"))
+    beta_country = _normalize_country(beta_row.get("locale"))
     conflict = (
         "country_mismatch"
         if alpha_country and beta_country and alpha_country != beta_country
@@ -154,12 +164,7 @@ def adapt_player_match(
         if alpha_row.get("dob") is not None and not pd.isna(alpha_row.get("dob"))
         else None
     )
-    beta_year = (
-        int(beta_row.get("birth_year"))
-        if beta_row.get("birth_year") is not None
-        and not pd.isna(beta_row.get("birth_year"))
-        else None
-    )
+    beta_year = _coerce_int(beta_row.get("birth_year"))
     conflict = (
         "dob_mismatch"
         if alpha_year and beta_year and abs(alpha_year - beta_year) > 1
