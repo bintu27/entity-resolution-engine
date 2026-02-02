@@ -47,6 +47,12 @@ def _setup_engine():
                     llm_match_count INTEGER,
                     llm_no_match_count INTEGER,
                     llm_review_count INTEGER,
+                    llm_call_count INTEGER,
+                    llm_error_count INTEGER,
+                    llm_invalid_json_retry_count INTEGER,
+                    llm_avg_latency_ms REAL,
+                    llm_fallback_mode TEXT,
+                    llm_disabled_reason TEXT,
                     created_at TIMESTAMP
                 )
                 """
@@ -94,6 +100,12 @@ def test_writer_persists_reviews_and_metrics():
             "llm_match_count": 0,
             "llm_no_match_count": 0,
             "llm_review_count": 1,
+            "llm_call_count": 1,
+            "llm_error_count": 0,
+            "llm_invalid_json_retry_count": 0,
+            "llm_avg_latency_ms": 12.5,
+            "llm_fallback_mode": "auto_approve",
+            "llm_disabled_reason": None,
         }
     )
 

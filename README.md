@@ -138,46 +138,94 @@ Swap in any other table name from the schemas (`entity_resolution_engine/db/*.sq
 ## API Examples
 After running `make api` (default `http://localhost:8000` unless you override `FASTAPI_PORT` in `.env`):
 - Health: `curl http://localhost:8000/health`
-- Trigger mapping: `curl -X POST http://localhost:8000/mapping/run`
+- Trigger mapping (returns a `run_id`): `curl -X POST http://localhost:8000/mapping/run`
 - Get player by UES ID: `curl http://localhost:8000/ues/player/UESP-<hash>`
 - Lookup by SourceAlpha ID: `curl http://localhost:8000/lookup/player/by-alpha/1`
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
 - Fetch lineage: `curl http://localhost:8000/ues/player/UESP-<hash>/lineage`
 
-## LLM Validation + Monitoring
-LLM validation is opt-in and used only for gray-zone or conflicting matches. Toggle it in `entity_resolution_engine/config/llm_validation.yml`:
-- `enabled: true|false`
-- `gray_zone` thresholds per entity type
-- Environment variables: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` (and `LLM_API_URL` for non-OpenAI providers).
+## LLM validation (gray-zone only)
+LLM validation is **opt-in** and only invoked for gray-zone or conflicting matches. It does **not** replace the RapidFuzz/heuristic matchers or the deterministic merge logic. The matcher still drives candidate generation and confidence; the LLM only adds a second opinion for ambiguous cases.
 
-When validation is disabled or the provider is not configured, gray-zone matches are auto-approved to preserve the pre-LLM merge behavior.
+Configure it in `entity_resolution_engine/config/llm_validation.yml`:
+- `enabled`: toggle validation on/off.
+- `gray_zone`: per-entity low/high thresholds.
+- `max_calls_per_entity_type_per_run`: cap LLM calls per entity type.
+- `circuit_breaker`: rolling window + max failure/invalid JSON rates.
+- `fallback_mode_when_llm_unhealthy`: `auto_approve` (default) or `review`.
 
-### Internal review, monitoring, and QA endpoints
-The API exposes internal-only endpoints protected by `X-Internal-API-Key` (set via `INTERNAL_API_KEY`):
-- Review queue: `GET /validation/reviews`, `GET /validation/reviews/{id}`, `POST /validation/reviews/{id}/approve`, `POST /validation/reviews/{id}/reject`
-- Monitoring + QA: `GET /monitoring/anomalies`, `POST /monitoring/triage`, `GET /monitoring/report?run_id=...`
+Environment variables:
+- `INTERNAL_API_KEY` (protects internal endpoints)
+- `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_API_URL`
+
+Safety guardrails:
+- Temperature is pinned to `0`.
+- Strict JSON response schema with one retry on invalid JSON.
+- Circuit breaker + call caps ensure predictable behavior.
+- If the LLM is unavailable, gray-zone matches follow the configured fallback (auto-approve by default).
+
+## Review queue workflow
+Review items are stored in `llm_match_reviews` and exposed via internal endpoints:
+- `GET /validation/reviews` (filter by `status`, `entity_type`, `run_id`, etc.)
+- `POST /validation/reviews/{id}/approve`
+- `POST /validation/reviews/{id}/reject`
+
+Approving/rejecting only updates the review queue status; it **does not** retroactively merge or update UES entities. To apply reviewed outcomes, re-run the pipeline with the desired behavior (e.g., by resolving conflicts upstream or exporting decisions).
 
 Example calls (replace `$INTERNAL_API_KEY` and `$RUN_ID`):
 ```bash
 curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
-  "http://localhost:8000/validation/reviews?status=REVIEW&limit=25"
+  "http://localhost:8000/validation/reviews?status=PENDING&run_id=$RUN_ID"
 
 curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
-  "http://localhost:8000/monitoring/anomalies?run_id=$RUN_ID"
-
-curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
-  "http://localhost:8000/monitoring/report?run_id=$RUN_ID"
+  -X POST "http://localhost:8000/validation/reviews/123/approve"
 ```
 
-Each mapping run generates a `run_id` (logged by the CLI) that ties together `pipeline_run_metrics`, `llm_match_reviews`, and anomaly/triage records for auditing.
+## Monitoring + anomaly detection
+Each pipeline run emits metrics and anomalies for QA:
+- Stored tables: `pipeline_run_metrics`, `llm_match_reviews`, `anomaly_events`, `anomaly_triage_reports`.
+- Anomaly detection uses z-scores across historical runs (lookback window) to flag rate drift.
+- Triage reports summarize likely causes and suggested actions.
 
-Run metrics and review items are stored in UES tables (`pipeline_run_metrics`, `llm_match_reviews`, `anomaly_events`, `anomaly_triage_reports`) for auditing and QA.
+Internal endpoints (protected by `X-Internal-API-Key`):
+- `GET /monitoring/anomalies?run_id=...`
+- `POST /monitoring/triage` (generates a triage report)
+- `GET /monitoring/report?run_id=...` (full quality snapshot)
+- `GET /monitoring/summary?run_id=...` (aggregated metrics + review queue counts)
+- `GET /monitoring/gates?run_id=...` (quality gate result)
 
-## Tests
-Basic unit tests cover season normalization, name similarity, deterministic UES IDs, and a positive player match scenario:
+Each mapping run returns a `run_id` (from `/mapping/run` or the CLI) that ties together metrics, review items, anomalies, and gate results.
+
+## Quality gates
+Quality gates turn run metrics into a PASS/FAIL decision to reduce manual QA overhead. Configure them in `entity_resolution_engine/config/quality_gates.yml`:
+- `max_llm_review_rate`
+- `max_gray_zone_rate`
+- `max_llm_error_rate`
+- `fail_on_high_severity_anomalies`
+
+Gate results are stored in `quality_gate_results` and exposed via `/monitoring/gates`.
+
+## How to run locally
+Use Docker Compose for the databases and a local Python environment for the API/pipeline.
+- Databases run on ports 5433–5435 via `docker-compose.yml`.
+- The FastAPI server defaults to `http://localhost:8000` (override via `.env`).
+
+Quickstart:
+```bash
+cp .env.example .env
+make up
+make seed
+make map
+make api
+```
+
+## Testing strategy
+Run unit + contract tests locally with:
 ```bash
 pytest
 ```
+
+CI scripts in `scripts/ci` cover formatting, linting, type checks, OpenAPI contracts, and performance benchmarks. Use `make ci` to run the full suite.
 
 ## CI Quality Gates (local)
 The CI pipeline runs the same gates locally via scripts in `scripts/ci`. To execute the full set:

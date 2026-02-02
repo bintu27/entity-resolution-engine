@@ -19,6 +19,10 @@ from uuid import uuid4
 
 from entity_resolution_engine.monitoring.anomaly_detector import detect_anomalies
 from entity_resolution_engine.monitoring.llm_triage import generate_triage_report
+from entity_resolution_engine.qa.quality_gates import (
+    evaluate_quality_gates,
+    get_quality_gate_config,
+)
 from entity_resolution_engine.ues_writer.writer import UESWriter
 from entity_resolution_engine.validation.config import get_llm_validation_config
 from entity_resolution_engine.validation.router import (
@@ -30,9 +34,10 @@ from entity_resolution_engine.validation.router import (
 )
 
 
-def main():
+def main() -> str:
     run_id = str(uuid4())
     validation_config = get_llm_validation_config()
+    quality_gate_config = get_quality_gate_config()
     alpha_data = load_alpha_data()
     beta_data = load_beta_data()
     writer = UESWriter()
@@ -176,7 +181,11 @@ def main():
     )
     writer.write_matches(match_entities)
 
+    gate_result = evaluate_quality_gates(writer.engine, run_id, quality_gate_config)
+    writer.write_quality_gate_result(gate_result)
+
     print("Mapping pipeline completed")
+    return run_id
 
 
 if __name__ == "__main__":

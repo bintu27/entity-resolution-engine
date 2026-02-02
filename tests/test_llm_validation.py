@@ -1,4 +1,5 @@
 from entity_resolution_engine.validation.config import (
+    CircuitBreakerConfig,
     GrayZoneThreshold,
     LLMValidationConfig,
 )
@@ -19,7 +20,7 @@ def test_llm_client_retries_invalid_json(monkeypatch):
     ]
     calls = []
 
-    def fake_send(system_prompt, user_prompt):
+    def fake_send(system_prompt, user_prompt, request_id):
         calls.append(user_prompt)
         return responses.pop(0)
 
@@ -38,6 +39,11 @@ def test_validate_pair_falls_back_on_llm_error(monkeypatch):
         provider_env="TEST_PROVIDER",
         model_env="TEST_MODEL",
         api_key_env="TEST_KEY",
+        max_calls_per_entity_type_per_run=200,
+        circuit_breaker=CircuitBreakerConfig(
+            window=50, max_fail_rate=0.2, max_invalid_json_rate=0.1
+        ),
+        fallback_mode_when_llm_unhealthy="auto_approve",
     )
     monkeypatch.setenv("TEST_PROVIDER", "internal")
     monkeypatch.setenv("TEST_MODEL", "test-model")
@@ -58,3 +64,21 @@ def test_validate_pair_falls_back_on_llm_error(monkeypatch):
     )
 
     assert result.decision == "REVIEW"
+
+
+def test_llm_client_extracts_openai_format():
+    payload = {"choices": [{"message": {"content": "{\"decision\":\"MATCH\"}"}}]}
+
+    assert LLMClient._extract_content(payload) == "{\"decision\":\"MATCH\"}"
+
+
+def test_llm_client_extracts_simple_content_format():
+    payload = {"content": "{\"decision\":\"NO_MATCH\"}"}
+
+    assert LLMClient._extract_content(payload) == "{\"decision\":\"NO_MATCH\"}"
+
+
+def test_llm_client_extracts_choices_text_format():
+    payload = {"choices": [{"text": "{\"decision\":\"REVIEW\"}"}]}
+
+    assert LLMClient._extract_content(payload) == "{\"decision\":\"REVIEW\"}"

@@ -24,6 +24,7 @@ class UESWriter:
 
     def reset(self) -> None:
         with self.engine.begin() as conn:
+            conn.execute(text("DELETE FROM quality_gate_results"))
             conn.execute(text("DELETE FROM anomaly_triage_reports"))
             conn.execute(text("DELETE FROM anomaly_events"))
             conn.execute(text("DELETE FROM pipeline_run_metrics"))
@@ -200,4 +201,16 @@ class UESWriter:
             if_exists="append",
             index=False,
             dtype={"report": JSON},
+        )
+
+    def write_quality_gate_result(self, result: Dict) -> None:
+        if not result:
+            return
+        df = pd.DataFrame([result])
+        df.to_sql(
+            "quality_gate_results",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"failed_gates": JSON, "gate_values": JSON},
         )

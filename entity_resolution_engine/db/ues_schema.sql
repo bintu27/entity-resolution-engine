@@ -85,6 +85,12 @@ CREATE TABLE IF NOT EXISTS pipeline_run_metrics (
     llm_match_count INTEGER,
     llm_no_match_count INTEGER,
     llm_review_count INTEGER,
+    llm_call_count INTEGER,
+    llm_error_count INTEGER,
+    llm_invalid_json_retry_count INTEGER,
+    llm_avg_latency_ms NUMERIC,
+    llm_fallback_mode TEXT,
+    llm_disabled_reason TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -105,5 +111,13 @@ CREATE TABLE IF NOT EXISTS anomaly_triage_reports (
     run_id TEXT,
     entity_type TEXT,
     report JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS quality_gate_results (
+    run_id TEXT PRIMARY KEY,
+    status TEXT,
+    failed_gates JSONB,
+    gate_values JSONB,
     created_at TIMESTAMP DEFAULT NOW()
 );
