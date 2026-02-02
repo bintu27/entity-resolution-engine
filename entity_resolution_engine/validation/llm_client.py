@@ -53,7 +53,9 @@ class LLMClient:
             first = choices[0]
             if isinstance(first, dict):
                 message = first.get("message")
-                if isinstance(message, dict) and isinstance(message.get("content"), str):
+                if isinstance(message, dict) and isinstance(
+                    message.get("content"), str
+                ):
                     return message["content"]
                 if isinstance(first.get("text"), str):
                     return first["text"]
