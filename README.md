@@ -144,6 +144,18 @@ After running `make api` (default `http://localhost:8000` unless you override `F
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
 - Fetch lineage: `curl http://localhost:8000/ues/player/UESP-<hash>/lineage`
 
+## LLM Validation + Monitoring
+LLM validation is opt-in and used only for gray-zone or conflicting matches. Toggle it in `entity_resolution_engine/config/llm_validation.yml`:
+- `enabled: true|false`
+- `gray_zone` thresholds per entity type
+- Environment variables: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` (and `LLM_API_URL` for non-OpenAI providers).
+
+The API exposes internal-only endpoints protected by `X-Internal-API-Key` (set via `INTERNAL_API_KEY`):
+- Review queue: `GET /validation/reviews`, `POST /validation/reviews/{id}/approve`, `POST /validation/reviews/{id}/reject`
+- Monitoring: `GET /monitoring/anomalies`, `POST /monitoring/triage`, `GET /monitoring/report?run_id=...`
+
+Run metrics and review items are stored in UES tables (`pipeline_run_metrics`, `llm_match_reviews`, `anomaly_events`, `anomaly_triage_reports`) for auditing and QA.
+
 ## Tests
 Basic unit tests cover season normalization, name similarity, deterministic UES IDs, and a positive player match scenario:
 ```bash

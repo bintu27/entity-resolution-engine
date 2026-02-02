@@ -53,3 +53,57 @@ CREATE TABLE IF NOT EXISTS source_lineage (
     ues_entity_type TEXT,
     ues_entity_id TEXT
 );
+
+CREATE TABLE IF NOT EXISTS llm_match_reviews (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT,
+    entity_type TEXT,
+    left_source TEXT,
+    left_id TEXT,
+    right_source TEXT,
+    right_id TEXT,
+    matcher_score NUMERIC,
+    signals JSONB,
+    llm_decision TEXT,
+    llm_confidence NUMERIC,
+    reasons JSONB,
+    risk_flags JSONB,
+    status TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_run_metrics (
+    run_id TEXT,
+    entity_type TEXT,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP,
+    total_candidates INTEGER,
+    auto_match_count INTEGER,
+    auto_reject_count INTEGER,
+    gray_zone_sent_count INTEGER,
+    llm_match_count INTEGER,
+    llm_no_match_count INTEGER,
+    llm_review_count INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS anomaly_events (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT,
+    entity_type TEXT,
+    metric_name TEXT,
+    current_value NUMERIC,
+    baseline_value NUMERIC,
+    z_score NUMERIC,
+    severity TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS anomaly_triage_reports (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT,
+    entity_type TEXT,
+    report JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);

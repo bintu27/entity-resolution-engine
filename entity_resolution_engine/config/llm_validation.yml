@@ -1,0 +1,21 @@
+enabled: false
+gray_zone:
+  team:
+    low: 0.78
+    high: 0.88
+  player:
+    low: 0.75
+    high: 0.9
+  competition:
+    low: 0.76
+    high: 0.86
+  season:
+    low: 0.7
+    high: 0.9
+  match:
+    low: 0.7
+    high: 0.9
+internal_api_key_env: "INTERNAL_API_KEY"
+provider_env: "LLM_PROVIDER"
+model_env: "LLM_MODEL"
+api_key_env: "LLM_API_KEY"
