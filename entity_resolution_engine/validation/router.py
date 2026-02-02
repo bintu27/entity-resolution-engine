@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
@@ -38,6 +39,15 @@ def _decision_from_result(result: ValidationResult) -> str:
     return "review"
 
 
+def _llm_validation_available(config: LLMValidationConfig) -> bool:
+    if not config.enabled:
+        return False
+    return all(
+        os.getenv(env_var, "")
+        for env_var in (config.provider_env, config.model_env, config.api_key_env)
+    )
+
+
 def _route_matches(
     entity_type: str,
     matches: List[Dict[str, Any]],
@@ -63,6 +73,10 @@ def _route_matches(
             rejected.append(match)
             continue
         if score >= threshold.high and not candidate.signals.get("conflict_flags"):
+            approved.append(match)
+            continue
+
+        if not _llm_validation_available(config):
             approved.append(match)
             continue
 
