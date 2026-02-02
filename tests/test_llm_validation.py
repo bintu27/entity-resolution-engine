@@ -67,18 +67,18 @@ def test_validate_pair_falls_back_on_llm_error(monkeypatch):
 
 
 def test_llm_client_extracts_openai_format():
-    payload = {"choices": [{"message": {"content": "{\"decision\":\"MATCH\"}"}}]}
+    payload = {"choices": [{"message": {"content": '{"decision":"MATCH"}'}}]}
 
-    assert LLMClient._extract_content(payload) == "{\"decision\":\"MATCH\"}"
+    assert LLMClient._extract_content(payload) == '{"decision":"MATCH"}'
 
 
 def test_llm_client_extracts_simple_content_format():
-    payload = {"content": "{\"decision\":\"NO_MATCH\"}"}
+    payload = {"content": '{"decision":"NO_MATCH"}'}
 
-    assert LLMClient._extract_content(payload) == "{\"decision\":\"NO_MATCH\"}"
+    assert LLMClient._extract_content(payload) == '{"decision":"NO_MATCH"}'
 
 
 def test_llm_client_extracts_choices_text_format():
-    payload = {"choices": [{"text": "{\"decision\":\"REVIEW\"}"}]}
+    payload = {"choices": [{"text": '{"decision":"REVIEW"}'}]}
 
-    assert LLMClient._extract_content(payload) == "{\"decision\":\"REVIEW\"}"
+    assert LLMClient._extract_content(payload) == '{"decision":"REVIEW"}'

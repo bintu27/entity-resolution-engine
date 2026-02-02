@@ -34,7 +34,7 @@ def get_quality_gate_config(path: Path = CONFIG_PATH) -> QualityGateConfig:
 
 
 def _normalize_config(
-    config: Optional[QualityGateConfig | Mapping[str, Any]]
+    config: Optional[QualityGateConfig | Mapping[str, Any]],
 ) -> QualityGateConfig:
     if config is None:
         return get_quality_gate_config()
@@ -90,9 +90,15 @@ def evaluate_quality_gates(
     total_candidates = totals["total_candidates"] or 0.0
     llm_call_count = totals["llm_call_count"] or 0.0
 
-    gray_zone_rate = totals["gray_zone_sent_count"] / total_candidates if total_candidates else 0.0
-    llm_review_rate = totals["llm_review_count"] / total_candidates if total_candidates else 0.0
-    llm_error_rate = totals["llm_error_count"] / llm_call_count if llm_call_count else 0.0
+    gray_zone_rate = (
+        totals["gray_zone_sent_count"] / total_candidates if total_candidates else 0.0
+    )
+    llm_review_rate = (
+        totals["llm_review_count"] / total_candidates if total_candidates else 0.0
+    )
+    llm_error_rate = (
+        totals["llm_error_count"] / llm_call_count if llm_call_count else 0.0
+    )
 
     failed_gates = []
     if gray_zone_rate > config.max_gray_zone_rate:
