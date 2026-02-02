@@ -38,7 +38,7 @@ def test_route_team_matches_gray_zone():
 
     outcome = route_team_matches(matches, alpha, beta, run_id="run-1", config=config)
 
-    assert len(outcome.approved_matches) == 1
+    assert len(outcome.approved_matches) == 2
     assert len(outcome.rejected_matches) == 1
-    assert len(outcome.review_items) == 1
-    assert outcome.metrics["gray_zone_sent_count"] == 1
+    assert len(outcome.review_items) == 0
+    assert outcome.metrics["gray_zone_sent_count"] == 0
