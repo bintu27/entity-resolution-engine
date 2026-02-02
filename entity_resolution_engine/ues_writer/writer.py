@@ -2,7 +2,7 @@ import hashlib
 from typing import Dict, List
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import JSON, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from entity_resolution_engine.db.connections import get_engine, init_db
@@ -17,12 +17,17 @@ def generate_ues_id(prefix: str, alpha_id, beta_id) -> str:
 
 
 class UESWriter:
-    def __init__(self):
-        self.engine = get_engine("UES_DB_URL", DEFAULT_UES_URL)
-        init_db(self.engine, "ues_schema.sql")
+    def __init__(self, engine=None):
+        self.engine = engine or get_engine("UES_DB_URL", DEFAULT_UES_URL)
+        if engine is None:
+            init_db(self.engine, "ues_schema.sql")
 
     def reset(self) -> None:
         with self.engine.begin() as conn:
+            conn.execute(text("DELETE FROM anomaly_triage_reports"))
+            conn.execute(text("DELETE FROM anomaly_events"))
+            conn.execute(text("DELETE FROM pipeline_run_metrics"))
+            conn.execute(text("DELETE FROM llm_match_reviews"))
             conn.execute(text("DELETE FROM source_lineage"))
             conn.execute(text("DELETE FROM ues_matches"))
             conn.execute(text("DELETE FROM ues_players"))
@@ -155,3 +160,44 @@ class UESWriter:
                     }
                 )
         self._write_source_lineage(lineage_entries)
+
+    def write_llm_reviews(self, reviews: List[Dict]) -> None:
+        if not reviews:
+            return
+        df = pd.DataFrame(reviews)
+        df.to_sql(
+            "llm_match_reviews",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={
+                "signals": JSON,
+                "reasons": JSON,
+                "risk_flags": JSON,
+            },
+        )
+
+    def write_run_metrics(self, metrics: List[Dict] | Dict) -> None:
+        if not metrics:
+            return
+        payload = metrics if isinstance(metrics, list) else [metrics]
+        df = pd.DataFrame(payload)
+        df.to_sql("pipeline_run_metrics", self.engine, if_exists="append", index=False)
+
+    def write_anomaly_events(self, events: List[Dict]) -> None:
+        if not events:
+            return
+        df = pd.DataFrame(events)
+        df.to_sql("anomaly_events", self.engine, if_exists="append", index=False)
+
+    def write_anomaly_report(self, report: Dict) -> None:
+        if not report:
+            return
+        df = pd.DataFrame([report])
+        df.to_sql(
+            "anomaly_triage_reports",
+            self.engine,
+            if_exists="append",
+            index=False,
+            dtype={"report": JSON},
+        )
