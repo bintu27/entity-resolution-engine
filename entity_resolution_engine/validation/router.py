@@ -5,7 +5,7 @@ import os
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
 
 import pandas as pd
 
@@ -118,7 +118,7 @@ def _route_matches(
     llm_disabled_reason: Optional[str] = None
     fallback_mode = config.fallback_mode_when_llm_unhealthy
     circuit_breaker = config.circuit_breaker
-    circuit_window = deque(maxlen=circuit_breaker.window)
+    circuit_window: Deque[Dict[str, bool]] = deque(maxlen=circuit_breaker.window)
 
     llm_client: Optional[LLMClient] = None
     llm_available = _llm_validation_available(config)
