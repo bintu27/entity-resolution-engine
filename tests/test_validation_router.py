@@ -1,6 +1,9 @@
 import pandas as pd
 
-from entity_resolution_engine.validation.config import GrayZoneThreshold, LLMValidationConfig
+from entity_resolution_engine.validation.config import (
+    GrayZoneThreshold,
+    LLMValidationConfig,
+)
 from entity_resolution_engine.validation.router import route_team_matches
 
 

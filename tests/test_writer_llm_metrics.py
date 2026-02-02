@@ -98,7 +98,9 @@ def test_writer_persists_reviews_and_metrics():
     )
 
     with engine.connect() as conn:
-        review_count = conn.execute(text("SELECT COUNT(*) FROM llm_match_reviews")).scalar()
+        review_count = conn.execute(
+            text("SELECT COUNT(*) FROM llm_match_reviews")
+        ).scalar()
         metrics_count = conn.execute(
             text("SELECT COUNT(*) FROM pipeline_run_metrics")
         ).scalar()

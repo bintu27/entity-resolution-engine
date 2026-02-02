@@ -8,25 +8,37 @@ from sqlalchemy.engine import Engine
 
 def build_quality_report(engine: Engine, run_id: str) -> Dict[str, Any]:
     with engine.connect() as conn:
-        metrics = conn.execute(
-            text("SELECT * FROM pipeline_run_metrics WHERE run_id = :run_id"),
-            {"run_id": run_id},
-        ).mappings().all()
-        anomalies = conn.execute(
-            text("SELECT * FROM anomaly_events WHERE run_id = :run_id"),
-            {"run_id": run_id},
-        ).mappings().all()
-        review_counts = conn.execute(
-            text(
-                """
+        metrics = (
+            conn.execute(
+                text("SELECT * FROM pipeline_run_metrics WHERE run_id = :run_id"),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
+        anomalies = (
+            conn.execute(
+                text("SELECT * FROM anomaly_events WHERE run_id = :run_id"),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
+        review_counts = (
+            conn.execute(
+                text(
+                    """
                 SELECT entity_type, status, COUNT(*) AS count
                 FROM llm_match_reviews
                 WHERE run_id = :run_id
                 GROUP BY entity_type, status
                 """
-            ),
-            {"run_id": run_id},
-        ).mappings().all()
+                ),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
 
     metrics_payload = [dict(row) for row in metrics]
     anomalies_payload = [dict(row) for row in anomalies]

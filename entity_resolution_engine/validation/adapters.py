@@ -110,9 +110,7 @@ def adapt_season_match(
     beta_start, beta_end = normalize_season(beta_row.get("label", ""))
     conflict = (
         "season_year_mismatch"
-        if alpha_start
-        and beta_start
-        and abs(int(alpha_start) - int(beta_start)) > 1
+        if alpha_start and beta_start and abs(int(alpha_start) - int(beta_start)) > 1
         else None
     )
     return ValidationCandidate(
@@ -158,7 +156,8 @@ def adapt_player_match(
     )
     beta_year = (
         int(beta_row.get("birth_year"))
-        if beta_row.get("birth_year") is not None and not pd.isna(beta_row.get("birth_year"))
+        if beta_row.get("birth_year") is not None
+        and not pd.isna(beta_row.get("birth_year"))
         else None
     )
     conflict = (
@@ -196,7 +195,12 @@ def adapt_match_match(
     alpha_date = alpha_row.get("match_date")
     beta_date = beta_row.get("match_date")
     date_delta = None
-    if alpha_date is not None and beta_date is not None and not pd.isna(alpha_date) and not pd.isna(beta_date):
+    if (
+        alpha_date is not None
+        and beta_date is not None
+        and not pd.isna(alpha_date)
+        and not pd.isna(beta_date)
+    ):
         date_delta = abs((alpha_date - beta_date).days)
     conflict = "date_mismatch" if date_delta is not None and date_delta > 2 else None
     return ValidationCandidate(

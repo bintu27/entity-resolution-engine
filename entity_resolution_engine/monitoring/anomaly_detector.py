@@ -24,29 +24,37 @@ def detect_anomalies(
     z_threshold: float = 2.0,
 ) -> List[Dict[str, float]]:
     with engine.connect() as conn:
-        current = conn.execute(
-            text(
-                """
+        current = (
+            conn.execute(
+                text(
+                    """
                 SELECT * FROM pipeline_run_metrics
                 WHERE run_id = :run_id AND entity_type = :entity_type
                 LIMIT 1
                 """
-            ),
-            {"run_id": run_id, "entity_type": entity_type},
-        ).mappings().first()
+                ),
+                {"run_id": run_id, "entity_type": entity_type},
+            )
+            .mappings()
+            .first()
+        )
         if not current:
             return []
-        baseline_rows = conn.execute(
-            text(
-                """
+        baseline_rows = (
+            conn.execute(
+                text(
+                    """
                 SELECT * FROM pipeline_run_metrics
                 WHERE entity_type = :entity_type AND run_id != :run_id
                 ORDER BY finished_at DESC NULLS LAST
                 LIMIT :limit
                 """
-            ),
-            {"entity_type": entity_type, "run_id": run_id, "limit": lookback},
-        ).mappings().all()
+                ),
+                {"entity_type": entity_type, "run_id": run_id, "limit": lookback},
+            )
+            .mappings()
+            .all()
+        )
 
     if len(baseline_rows) < 2:
         return []

@@ -1,4 +1,7 @@
-from entity_resolution_engine.validation.config import GrayZoneThreshold, LLMValidationConfig
+from entity_resolution_engine.validation.config import (
+    GrayZoneThreshold,
+    LLMValidationConfig,
+)
 from entity_resolution_engine.validation.llm_client import LLMClient
 from entity_resolution_engine.validation.llm_validator import validate_pair
 
@@ -10,7 +13,10 @@ def test_llm_client_retries_invalid_json(monkeypatch):
         api_key="test-key",
         api_url="http://example.com",
     )
-    responses = ["not-json", '{"decision":"MATCH","confidence":0.9,"reasons":[],"risk_flags":[]}']
+    responses = [
+        "not-json",
+        '{"decision":"MATCH","confidence":0.9,"reasons":[],"risk_flags":[]}',
+    ]
     calls = []
 
     def fake_send(system_prompt, user_prompt):

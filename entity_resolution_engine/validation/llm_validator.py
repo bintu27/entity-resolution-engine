@@ -46,7 +46,9 @@ def validate_pair(
             risk_flags=["llm_unavailable"],
         )
 
-    llm_client = llm_client or LLMClient(provider=provider, model=model, api_key=api_key)
+    llm_client = llm_client or LLMClient(
+        provider=provider, model=model, api_key=api_key
+    )
     payload = {
         "entity_type": entity_type,
         "matcher_score": matcher_score,

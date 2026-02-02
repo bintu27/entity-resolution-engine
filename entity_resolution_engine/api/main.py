@@ -31,7 +31,9 @@ def trigger_mapping():
 
 
 def _require_internal_key(
-    x_internal_api_key: Optional[str] = Header(default=None, alias="X-Internal-API-Key"),
+    x_internal_api_key: Optional[str] = Header(
+        default=None, alias="X-Internal-API-Key"
+    ),
 ):
     expected = os.getenv(validation_config.internal_api_key_env)
     if not expected:
@@ -176,7 +178,9 @@ def _update_review_status(review_id: int, status: str) -> Dict[str, Any]:
         """
     )
     with ues_engine.begin() as conn:
-        row = conn.execute(query, {"status": status, "rid": review_id}).mappings().first()
+        row = (
+            conn.execute(query, {"status": status, "rid": review_id}).mappings().first()
+        )
     if not row:
         raise HTTPException(status_code=404, detail="Review not found")
     return _deserialize_json_fields(dict(row), ["signals", "reasons", "risk_flags"])
