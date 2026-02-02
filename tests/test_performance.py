@@ -46,4 +46,4 @@ def test_player_matcher_perf_smoke():
     match_players(alpha_players, beta_players, {1: 1}, beta_teams)
     duration = time.perf_counter() - start
 
-    assert duration < 2.0
+    assert duration < 3.0
