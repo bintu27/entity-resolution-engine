@@ -1,14 +1,18 @@
 # Entity Resolution Engine
 
-A modular Python-based Entity Resolution Engine that merges records from two independent data sources (SourceAlpha and SourceBeta) into a unified golden database (UnifiedEntityStore). It ships with synthetic sports data, normalization helpers, fuzzy matchers, merge logic, lineage, and a small FastAPI for lookups.
+A modular Python project designed to **showcase testing practices** around data-pipeline workflows. The codebase happens to implement an entity-resolution pipeline (merging two sources into a unified store), but the primary focus of this repository is **how the matching workflow is tested, validated, and gated**, not the matching logic itself.
 
-## Architecture
-- **SourceAlpha** and **SourceBeta**: standalone Postgres databases with slightly different schemas for teams, players, competitions, seasons, and matches.
-- **UnifiedEntityStore (UES)**: canonical database that stores unified entities plus lineage back to both sources.
-- **Pipeline**: loaders → normalizers → matchers → mergers → UES writer.
-- **API**: FastAPI exposing health, mapping trigger, and player lookup/lineage endpoints.
+## Testing-first overview (what this repo highlights)
+This project is structured so you can observe and validate behavior at multiple levels:
+- **Unit tests** for normalization utilities, matching heuristics, and merge helpers.
+- **Contract tests** for API behavior (OpenAPI validation).
+- **Integration tests** across containers using seeded synthetic data.
+- **Quality gates** that turn metrics (coverage, lint, type check, contract tests) into pass/fail signals.
+- **CI scripts** in `scripts/ci` that codify the same checks locally and in pipelines.
 
-## Quickstart
+If you’re reviewing or demoing this repo, start with the **Testing** section below, then use the Quickstart only if you want to run the stack.
+
+## Quickstart (optional runtime demo)
 1. Copy environment template:
    ```bash
    cp .env.example .env
@@ -37,7 +41,7 @@ make dev
 ```
 This target ensures `.env` exists (copying from `.env.example` if needed), starts the databases, seeds them, runs the mapper, and finally launches the FastAPI server. Use `Ctrl+C` to stop the API and `make clean` to tear everything down.
 
-## Run Locally (step-by-step)
+## Run Locally (step-by-step runtime demo)
 ### Prerequisites
 - Docker with Compose v2+ (ships with recent Docker Desktop installs)
 - Python 3.11+ plus `pip`
@@ -90,7 +94,7 @@ This target ensures `.env` exists (copying from `.env.example` if needed), start
    ```
    This stops and removes the Postgres containers/volumes; rerun the steps above to start fresh.
 
-## Inspecting data volumes
+## Inspecting data volumes (optional)
 Once the containers are running, you can count rows directly in each database via `psql` inside the respective container.
 
 1. **SourceAlpha tables**
@@ -117,25 +121,25 @@ Once the containers are running, you can count rows directly in each database vi
 
 Swap in any other table name from the schemas (`entity_resolution_engine/db/*.sql`) if you need different counts. You can also open an interactive session (`docker-compose exec <service> psql -U postgres -d <db>`) and run `\dt` to list every table.
 
-## Synthetic data volume
+## Synthetic data volume (optional)
 - `make seed` now loads thousands of rows so you can stress-test the matcher/merger (≈40 Alpha teams, 50 Beta teams, 2k–2.3k players, 800–900 matches, ~20k lineup rows).
 - Data builders share vocab in `entity_resolution_engine/synthetic/base_entities.py` so Alpha/Beta overlap is partial—names are mutated, some entities exist in only one source, and schema quirks stay intact.
 - Adjust the dataset size by tweaking the constants at the top of `entity_resolution_engine/synthetic/generate_alpha_data.py` and `entity_resolution_engine/synthetic/generate_beta_data.py` (team counts, player counts, matches, etc.). Rerun `make seed` (and `make map`) after any change.
 - Each generator deletes the target tables before reloading, so multiple runs keep the database consistent.
 
-## Docker Compose
+## Docker Compose (optional)
 `docker-compose.yml` spins up three Postgres 16 services:
 - `source_alpha_db` on port 5433
 - `source_beta_db` on port 5434
 - `ues_db` on port 5435
 
-## Data Model Highlights
+## Data Model Highlights (background)
 - Synthetic data includes noisy variations in player names, competition naming, seasons, and match dates.
 - Normalizers standardize names, countries, seasons, and competitions.
 - Matchers use RapidFuzz and heuristic scores to connect Alpha/Beta entities with confidence thresholds.
 - UES IDs are deterministic (`UES*` + hash) and lineage tracks all source IDs.
 
-## API Examples
+## API Examples (for contract tests)
 After running `make api` (default `http://localhost:8000` unless you override `FASTAPI_PORT` in `.env`):
 - Health: `curl http://localhost:8000/health`
 - Trigger mapping (returns a `run_id`): `curl -X POST http://localhost:8000/mapping/run`
@@ -144,7 +148,7 @@ After running `make api` (default `http://localhost:8000` unless you override `F
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
 - Fetch lineage: `curl http://localhost:8000/ues/player/UESP-<hash>/lineage`
 
-## LLM validation (gray-zone only)
+## LLM validation (gray-zone only, optional)
 LLM validation is **opt-in** and only invoked for gray-zone or conflicting matches. It does **not** replace the RapidFuzz/heuristic matchers or the deterministic merge logic. The matcher still drives candidate generation and confidence; the LLM only adds a second opinion for ambiguous cases.
 
 Configure it in `entity_resolution_engine/config/llm_validation.yml`:
@@ -164,7 +168,7 @@ Safety guardrails:
 - Circuit breaker + call caps ensure predictable behavior.
 - If the LLM is unavailable, gray-zone matches follow the configured fallback (auto-approve by default).
 
-## Review queue workflow
+## Review queue workflow (optional)
 Review items are stored in `llm_match_reviews` and exposed via internal endpoints:
 - `GET /validation/reviews` (filter by `status`, `entity_type`, `run_id`, etc.)
 - `POST /validation/reviews/{id}/approve`
@@ -181,7 +185,7 @@ curl -H "X-Internal-API-Key: $INTERNAL_API_KEY" \
   -X POST "http://localhost:8000/validation/reviews/123/approve"
 ```
 
-## Monitoring + anomaly detection
+## Monitoring + anomaly detection (optional)
 Each pipeline run emits metrics and anomalies for QA:
 - Stored tables: `pipeline_run_metrics`, `llm_match_reviews`, `anomaly_events`, `anomaly_triage_reports`.
 - Anomaly detection uses z-scores across historical runs (lookback window) to flag rate drift.
@@ -196,7 +200,7 @@ Internal endpoints (protected by `X-Internal-API-Key`):
 
 Each mapping run returns a `run_id` (from `/mapping/run` or the CLI) that ties together metrics, review items, anomalies, and gate results.
 
-## Quality gates
+## Quality gates (optional for runtime, required in CI)
 Quality gates turn run metrics into a PASS/FAIL decision to reduce manual QA overhead. Configure them in `entity_resolution_engine/config/quality_gates.yml`:
 - `max_llm_review_rate`
 - `max_gray_zone_rate`
@@ -205,35 +209,27 @@ Quality gates turn run metrics into a PASS/FAIL decision to reduce manual QA ove
 
 Gate results are stored in `quality_gate_results` and exposed via `/monitoring/gates`.
 
-## How to run locally
-Use Docker Compose for the databases and a local Python environment for the API/pipeline.
-- Databases run on ports 5433–5435 via `docker-compose.yml`.
-- The FastAPI server defaults to `http://localhost:8000` (override via `.env`).
+## Testing (primary focus of this repo)
+The goal is to demonstrate a **full testing pipeline** around an entity-resolution workflow.
 
-Quickstart:
-```bash
-cp .env.example .env
-make up
-make seed
-make map
-make api
-```
+### What’s covered
+- **Unit tests**: fast tests for normalization/matching helpers and merge logic.
+- **Contract tests**: validate API endpoints against the OpenAPI spec.
+- **Integration tests**: ensure DB containers + seed data work end-to-end.
+- **Quality gates**: coverage, lint, type checks, contracts, and performance thresholds.
 
-## Testing strategy
-Run unit + contract tests locally with:
+### Fast local run (unit + contract)
 ```bash
 pytest
 ```
 
-CI scripts in `scripts/ci` cover formatting, linting, type checks, OpenAPI contracts, and performance benchmarks. Use `make ci` to run the full suite.
-
-## CI Quality Gates (local)
-The CI pipeline runs the same gates locally via scripts in `scripts/ci`. To execute the full set:
+### Full CI-style validation (recommended)
+Run the same gates as CI:
 ```bash
 make ci
 ```
 
-Individual gates can be run as needed:
+### Individual gates (run only what you need)
 ```bash
 bash scripts/ci/format_check.sh
 bash scripts/ci/lint.sh
@@ -246,3 +242,13 @@ bash scripts/ci/coverage_gate.sh
 bash scripts/ci/security.sh
 bash scripts/ci/performance_tests.sh
 ```
+
+### Test data + repeatability
+The tests and integration checks rely on deterministic synthetic data:
+- Regenerate data with `make seed`.
+- Reset everything with `make clean` then `make dev` if you need a clean slate.
+
+### Troubleshooting test runs
+- **Database not running?** Use `make up` before integration/contract tests.
+- **Slow CI gates?** Run unit tests first (`pytest`) to isolate failures quickly.
+- **API contract failures?** Confirm `make api` is running for live contract checks.
