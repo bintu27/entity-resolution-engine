@@ -27,6 +27,10 @@ jobs:
       - name: Preflight - install dependencies
         run: bash scripts/ci/install_deps.sh
 
+      - name: Fetch gitleaks range
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: git fetch --no-tags --prune --depth=0 origin ${{ github.event.before }}
+
       - name: Formatting (check)
         run: bash scripts/ci/format_check.sh
 
