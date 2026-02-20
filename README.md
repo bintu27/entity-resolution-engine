@@ -142,7 +142,9 @@ Swap in any other table name from the schemas (`entity_resolution_engine/db/*.sq
 ## API Examples (for contract tests)
 After running `make api` (default `http://localhost:8000` unless you override `FASTAPI_PORT` in `.env`):
 - Health: `curl http://localhost:8000/health`
-- Trigger mapping (returns a `run_id`): `curl -X POST http://localhost:8000/mapping/run`
+- Trigger mapping async (returns immediately with `run_id`): `curl -X POST http://localhost:8000/mapping/run`
+- Check mapping status: `curl http://localhost:8000/mapping/status/<RUN_ID>`
+- Trigger mapping synchronously (wait for completion): `curl -X POST "http://localhost:8000/mapping/run?wait=true"`
 - Get player by UES ID: `curl http://localhost:8000/ues/player/UESP-<hash>`
 - Lookup by SourceAlpha ID: `curl http://localhost:8000/lookup/player/by-alpha/1`
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`

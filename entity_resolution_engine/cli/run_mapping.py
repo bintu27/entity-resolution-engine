@@ -1,3 +1,4 @@
+import os
 from entity_resolution_engine.loaders.alpha_loader import load_alpha_data
 from entity_resolution_engine.loaders.beta_loader import load_beta_data
 from entity_resolution_engine.matchers.teams_matcher import match_teams
@@ -34,9 +35,12 @@ from entity_resolution_engine.validation.router import (
 )
 
 
-def main() -> str:
-    run_id = str(uuid4())
+def main(run_id: str | None = None) -> str:
+    run_id = run_id or str(uuid4())
     validation_config = get_llm_validation_config()
+    auto_triage_during_mapping = (
+        os.getenv("AUTO_TRIAGE_DURING_MAPPING", "false").lower() == "true"
+    )
     quality_gate_config = get_quality_gate_config()
     alpha_data = load_alpha_data()
     beta_data = load_beta_data()
@@ -57,7 +61,8 @@ def main() -> str:
     writer.write_llm_reviews(team_outcome.review_items)
     writer.write_run_metrics(team_outcome.metrics)
     detect_anomalies(writer.engine, run_id, "team")
-    generate_triage_report(writer.engine, run_id, "team")
+    if auto_triage_during_mapping:
+        generate_triage_report(writer.engine, run_id, "team")
     team_entities, alpha_team_to_ues, _ = merge_teams(
         team_outcome.approved_matches, alpha_data["teams"], beta_data["teams"]
     )
@@ -82,7 +87,8 @@ def main() -> str:
     writer.write_llm_reviews(comp_outcome.review_items)
     writer.write_run_metrics(comp_outcome.metrics)
     detect_anomalies(writer.engine, run_id, "competition")
-    generate_triage_report(writer.engine, run_id, "competition")
+    if auto_triage_during_mapping:
+        generate_triage_report(writer.engine, run_id, "competition")
     comp_entities, alpha_comp_to_ues, beta_comp_to_ues = build_competition_entities(
         comp_outcome.approved_matches
     )
@@ -108,7 +114,8 @@ def main() -> str:
     writer.write_llm_reviews(season_outcome.review_items)
     writer.write_run_metrics(season_outcome.metrics)
     detect_anomalies(writer.engine, run_id, "season")
-    generate_triage_report(writer.engine, run_id, "season")
+    if auto_triage_during_mapping:
+        generate_triage_report(writer.engine, run_id, "season")
     season_entities, alpha_season_to_ues, beta_season_to_ues = build_season_entities(
         season_outcome.approved_matches, alpha_comp_to_ues
     )
@@ -133,7 +140,8 @@ def main() -> str:
     writer.write_llm_reviews(player_outcome.review_items)
     writer.write_run_metrics(player_outcome.metrics)
     detect_anomalies(writer.engine, run_id, "player")
-    generate_triage_report(writer.engine, run_id, "player")
+    if auto_triage_during_mapping:
+        generate_triage_report(writer.engine, run_id, "player")
     player_entities, alpha_player_to_ues, beta_player_to_ues = merge_players(
         player_outcome.approved_matches,
         alpha_data["players"],
@@ -170,7 +178,8 @@ def main() -> str:
     writer.write_llm_reviews(match_outcome.review_items)
     writer.write_run_metrics(match_outcome.metrics)
     detect_anomalies(writer.engine, run_id, "match")
-    generate_triage_report(writer.engine, run_id, "match")
+    if auto_triage_during_mapping:
+        generate_triage_report(writer.engine, run_id, "match")
     match_entities = merge_matches(
         match_outcome.approved_matches,
         alpha_data["matches"],
