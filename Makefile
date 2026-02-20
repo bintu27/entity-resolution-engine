@@ -37,6 +37,7 @@ ci:
 	bash scripts/ci/build.sh
 	bash scripts/ci/openapi_contract.sh
 	bash scripts/ci/contract_tests.sh
+	bash scripts/ci/llm_split_gate.sh
 	bash scripts/ci/unit_tests.sh
 	bash scripts/ci/coverage_gate.sh
 	bash scripts/ci/security.sh

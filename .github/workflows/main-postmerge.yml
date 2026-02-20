@@ -33,6 +33,7 @@ jobs:
       - name: Full contract + unit tests
         run: |
           bash scripts/ci/contract_tests.sh
+          bash scripts/ci/llm_split_gate.sh
           bash scripts/ci/unit_tests.sh
 
       - name: Coverage gate

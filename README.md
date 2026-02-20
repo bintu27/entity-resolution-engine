@@ -153,6 +153,9 @@ LLM validation is **opt-in** and only invoked for gray-zone or conflicting match
 
 Configure it in `entity_resolution_engine/config/llm_validation.yml`:
 - `enabled`: toggle validation on/off.
+- `mapping_enabled`: controls LLM usage in mapping validation/routing.
+- `reporting_enabled`: controls LLM usage for anomaly triage/reporting.
+- If `mapping_enabled`/`reporting_enabled` are omitted, they fall back to `enabled`.
 - `gray_zone`: per-entity low/high thresholds.
 - `max_calls_per_entity_type_per_run`: cap LLM calls per entity type.
 - `circuit_breaker`: rolling window + max failure/invalid JSON rates.

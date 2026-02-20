@@ -66,6 +66,9 @@ jobs:
       - name: Contract tests
         run: bash scripts/ci/contract_tests.sh
 
+      - name: LLM split gate (mapping off, reporting on)
+        run: bash scripts/ci/llm_split_gate.sh
+
       - name: Unit tests + coverage
         run: bash scripts/ci/unit_tests.sh
 

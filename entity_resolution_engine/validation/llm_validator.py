@@ -28,7 +28,7 @@ def validate_pair(
 ) -> ValidationResult:
     config = config or get_llm_validation_config()
     # Router must check availability; validate_pair assumes available.
-    if not config.enabled:
+    if not config.mapping_llm_enabled:
         return ValidationResult(
             decision="REVIEW",
             confidence=0.0,

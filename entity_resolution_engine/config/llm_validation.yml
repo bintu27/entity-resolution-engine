@@ -1,4 +1,6 @@
 enabled: false
+mapping_enabled: false
+reporting_enabled: true
 max_calls_per_entity_type_per_run: 200
 circuit_breaker:
   window: 50

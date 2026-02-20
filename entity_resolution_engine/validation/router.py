@@ -52,7 +52,7 @@ def _increment_llm_decision_counts(
 
 
 def _llm_validation_available(config: LLMValidationConfig) -> bool:
-    if not config.enabled:
+    if not config.mapping_llm_enabled:
         return False
     return all(
         os.getenv(env_var, "")
