@@ -36,12 +36,19 @@ class RoutingOutcome:
     metrics: Dict[str, Any]
 
 
-def _decision_from_result(result: ValidationResult) -> str:
+def _increment_llm_decision_counts(
+    result: ValidationResult,
+    llm_match: int,
+    llm_no_match: int,
+    llm_review: int,
+) -> tuple[int, int, int]:
     if result.decision == "MATCH":
-        return "approved"
-    if result.decision == "NO_MATCH":
-        return "rejected"
-    return "review"
+        llm_match += 1
+    elif result.decision == "NO_MATCH":
+        llm_no_match += 1
+    else:
+        llm_review += 1
+    return llm_match, llm_no_match, llm_review
 
 
 def _llm_validation_available(config: LLMValidationConfig) -> bool:
@@ -171,27 +178,29 @@ def _route_matches(
 
         if llm_disabled_reason:
             fallback_result = _fallback_decision(fallback_mode)
-            decision = _decision_from_result(fallback_result)
-            if decision == "approved":
-                approved.append(match)
-            else:
-                llm_review += 1
-                review_items.append(
-                    _build_review_item(run_id, entity_type, candidate, fallback_result)
-                )
+            llm_match, llm_no_match, llm_review = _increment_llm_decision_counts(
+                fallback_result,
+                llm_match,
+                llm_no_match,
+                llm_review,
+            )
+            review_items.append(
+                _build_review_item(run_id, entity_type, candidate, fallback_result)
+            )
             continue
 
         if llm_call_count >= config.max_calls_per_entity_type_per_run:
             llm_disabled_reason = "max_calls_exceeded"
             fallback_result = _fallback_decision(fallback_mode)
-            decision = _decision_from_result(fallback_result)
-            if decision == "approved":
-                approved.append(match)
-            else:
-                llm_review += 1
-                review_items.append(
-                    _build_review_item(run_id, entity_type, candidate, fallback_result)
-                )
+            llm_match, llm_no_match, llm_review = _increment_llm_decision_counts(
+                fallback_result,
+                llm_match,
+                llm_no_match,
+                llm_review,
+            )
+            review_items.append(
+                _build_review_item(run_id, entity_type, candidate, fallback_result)
+            )
             continue
 
         gray_zone_sent += 1
@@ -208,18 +217,13 @@ def _route_matches(
         _record_llm_outcome(result)
         if _circuit_open():
             llm_disabled_reason = "circuit_breaker_open"
-        decision = _decision_from_result(result)
-        if decision == "approved":
-            approved.append(match)
-            llm_match += 1
-        elif decision == "rejected":
-            rejected.append(match)
-            llm_no_match += 1
-        else:
-            llm_review += 1
-            review_items.append(
-                _build_review_item(run_id, entity_type, candidate, result)
-            )
+        llm_match, llm_no_match, llm_review = _increment_llm_decision_counts(
+            result,
+            llm_match,
+            llm_no_match,
+            llm_review,
+        )
+        review_items.append(_build_review_item(run_id, entity_type, candidate, result))
 
     llm_avg_latency_ms = (
         llm_total_latency_ms / llm_call_count if llm_call_count else None
@@ -230,8 +234,8 @@ def _route_matches(
         "started_at": None,
         "finished_at": None,
         "total_candidates": len(matches),
-        "auto_match_count": len(approved) - llm_match,
-        "auto_reject_count": len(rejected) - llm_no_match,
+        "auto_match_count": len(approved),
+        "auto_reject_count": len(rejected),
         "gray_zone_sent_count": gray_zone_sent,
         "llm_match_count": llm_match,
         "llm_no_match_count": llm_no_match,
