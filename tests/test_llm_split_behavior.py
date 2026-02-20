@@ -42,7 +42,9 @@ def test_mapping_llm_disabled_even_when_global_enabled(monkeypatch):
         raise AssertionError("validate_pair should not be called for mapping")
 
     monkeypatch.setattr(router_module, "validate_pair", fail_if_called)
-    outcome = route_team_matches(matches, alpha, beta, run_id="run-split", config=config)
+    outcome = route_team_matches(
+        matches, alpha, beta, run_id="run-split", config=config
+    )
 
     assert outcome.metrics["llm_call_count"] == 0
     assert outcome.metrics["llm_disabled_reason"] == "llm_unavailable"

@@ -40,4 +40,3 @@ def test_mapping_and_reporting_flags_override_enabled():
     )
     assert config.mapping_llm_enabled is False
     assert config.reporting_llm_enabled is True
-
