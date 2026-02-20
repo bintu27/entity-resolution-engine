@@ -142,7 +142,9 @@ Swap in any other table name from the schemas (`entity_resolution_engine/db/*.sq
 ## API Examples (for contract tests)
 After running `make api` (default `http://localhost:8000` unless you override `FASTAPI_PORT` in `.env`):
 - Health: `curl http://localhost:8000/health`
-- Trigger mapping (returns a `run_id`): `curl -X POST http://localhost:8000/mapping/run`
+- Trigger mapping async (returns immediately with `run_id`): `curl -X POST http://localhost:8000/mapping/run`
+- Check mapping status: `curl http://localhost:8000/mapping/status/<RUN_ID>`
+- Trigger mapping synchronously (wait for completion): `curl -X POST "http://localhost:8000/mapping/run?wait=true"`
 - Get player by UES ID: `curl http://localhost:8000/ues/player/UESP-<hash>`
 - Lookup by SourceAlpha ID: `curl http://localhost:8000/lookup/player/by-alpha/1`
 - Lookup by SourceBeta ID: `curl http://localhost:8000/lookup/player/by-beta/10`
@@ -153,6 +155,9 @@ LLM validation is **opt-in** and only invoked for gray-zone or conflicting match
 
 Configure it in `entity_resolution_engine/config/llm_validation.yml`:
 - `enabled`: toggle validation on/off.
+- `mapping_enabled`: controls LLM usage in mapping validation/routing.
+- `reporting_enabled`: controls LLM usage for anomaly triage/reporting.
+- If `mapping_enabled`/`reporting_enabled` are omitted, they fall back to `enabled`.
 - `gray_zone`: per-entity low/high thresholds.
 - `max_calls_per_entity_type_per_run`: cap LLM calls per entity type.
 - `circuit_breaker`: rolling window + max failure/invalid JSON rates.

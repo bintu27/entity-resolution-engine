@@ -1,6 +1,9 @@
 import json
 import os
+from datetime import datetime, timezone
+from threading import Lock, Thread
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from sqlalchemy import text
@@ -17,6 +20,41 @@ ues_engine = get_engine(
     "UES_DB_URL", "postgresql://postgres:pass@localhost:5435/ues_db"
 )
 validation_config = get_llm_validation_config()
+_mapping_runs: Dict[str, Dict[str, Any]] = {}
+_mapping_runs_lock = Lock()
+
+
+def _active_mapping_run_id() -> Optional[str]:
+    with _mapping_runs_lock:
+        for rid, state in _mapping_runs.items():
+            if state.get("status") in {"queued", "running"}:
+                return rid
+    return None
+
+
+def _run_mapping_background(run_id: str) -> None:
+    with _mapping_runs_lock:
+        _mapping_runs[run_id] = {
+            "run_id": run_id,
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "finished_at": None,
+            "error": None,
+        }
+    try:
+        run_mapping(run_id=run_id)
+        with _mapping_runs_lock:
+            _mapping_runs[run_id]["status"] = "mapping_complete"
+            _mapping_runs[run_id]["finished_at"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+    except Exception as exc:
+        with _mapping_runs_lock:
+            _mapping_runs[run_id]["status"] = "failed"
+            _mapping_runs[run_id]["finished_at"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+            _mapping_runs[run_id]["error"] = str(exc)
 
 
 @app.get("/health")
@@ -25,9 +63,62 @@ def health():
 
 
 @app.post("/mapping/run")
-def trigger_mapping():
-    run_id = run_mapping()
-    return {"status": "mapping_complete", "run_id": run_id}
+def trigger_mapping(wait: bool = False):
+    active_run = _active_mapping_run_id()
+    if active_run:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Mapping run already in progress: {active_run}",
+        )
+
+    if wait:
+        run_id = str(uuid4())
+        with _mapping_runs_lock:
+            _mapping_runs[run_id] = {
+                "run_id": run_id,
+                "status": "running",
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "finished_at": None,
+                "error": None,
+            }
+        try:
+            run_mapping(run_id=run_id)
+            with _mapping_runs_lock:
+                _mapping_runs[run_id]["status"] = "mapping_complete"
+                _mapping_runs[run_id]["finished_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
+        except Exception as exc:
+            with _mapping_runs_lock:
+                _mapping_runs[run_id]["status"] = "failed"
+                _mapping_runs[run_id]["finished_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
+                _mapping_runs[run_id]["error"] = str(exc)
+            raise
+        return {"status": "mapping_complete", "run_id": run_id}
+
+    run_id = str(uuid4())
+    with _mapping_runs_lock:
+        _mapping_runs[run_id] = {
+            "run_id": run_id,
+            "status": "queued",
+            "started_at": None,
+            "finished_at": None,
+            "error": None,
+        }
+    worker = Thread(target=_run_mapping_background, args=(run_id,), daemon=True)
+    worker.start()
+    return {"status": "mapping_started", "run_id": run_id}
+
+
+@app.get("/mapping/status/{run_id}")
+def mapping_status(run_id: str):
+    with _mapping_runs_lock:
+        state = _mapping_runs.get(run_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return state
 
 
 def _require_internal_key(

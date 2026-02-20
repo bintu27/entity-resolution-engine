@@ -92,7 +92,7 @@ def generate_triage_report(
     anomalies_payload = [dict(item) for item in anomalies]
     reviews_payload = [dict(item) for item in reviews]
 
-    if not config.enabled:
+    if not config.reporting_llm_enabled:
         report = _fallback_report(anomalies_payload)
     else:
         provider = os.getenv(config.provider_env, "")

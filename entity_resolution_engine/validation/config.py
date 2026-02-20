@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import yaml
 
@@ -34,6 +34,20 @@ class LLMValidationConfig:
     max_calls_per_entity_type_per_run: int
     circuit_breaker: CircuitBreakerConfig
     fallback_mode_when_llm_unhealthy: str
+    mapping_enabled: Optional[bool] = None
+    reporting_enabled: Optional[bool] = None
+
+    @property
+    def mapping_llm_enabled(self) -> bool:
+        if self.mapping_enabled is None:
+            return self.enabled
+        return self.mapping_enabled
+
+    @property
+    def reporting_llm_enabled(self) -> bool:
+        if self.reporting_enabled is None:
+            return self.enabled
+        return self.reporting_enabled
 
     def threshold_for(self, entity_type: str) -> GrayZoneThreshold:
         return self.gray_zone.get(entity_type, GrayZoneThreshold(low=0.0, high=1.0))
@@ -56,6 +70,8 @@ def get_llm_validation_config(path: Path = CONFIG_PATH) -> LLMValidationConfig:
     )
     return LLMValidationConfig(
         enabled=bool(data.get("enabled", False)),
+        mapping_enabled=data.get("mapping_enabled"),
+        reporting_enabled=data.get("reporting_enabled"),
         gray_zone=gray_zone,
         internal_api_key_env=data.get("internal_api_key_env", "INTERNAL_API_KEY"),
         provider_env=data.get("provider_env", "LLM_PROVIDER"),

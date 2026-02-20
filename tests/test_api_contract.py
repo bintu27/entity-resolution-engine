@@ -13,6 +13,7 @@ def test_openapi_contract_contains_expected_paths():
     expected_paths = {
         "/health": {"get"},
         "/mapping/run": {"post"},
+        "/mapping/status/{run_id}": {"get"},
         "/ues/player/{ues_id}": {"get"},
         "/lookup/player/by-alpha/{alpha_id}": {"get"},
         "/lookup/player/by-beta/{beta_id}": {"get"},
